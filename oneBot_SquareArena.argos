@@ -27,6 +27,7 @@
       <actuators>
         <differential_steering implementation="default" />
         <range_and_bearing implementation="default" />
+        <leds implementation="default" medium="leds" />
       </actuators>
       <sensors>
         <footbot_proximity implementation="default" show_rays="true" />
@@ -85,6 +86,7 @@
   <!-- ********* -->
   <media>
     <range_and_bearing id="rab" index="grid" grid_size="1,1,1" />
+    <led id="leds" index="grid" grid_size="1,1,1" />
   </media>
 
   <!-- ****************** -->
