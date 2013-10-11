@@ -1,11 +1,13 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+   <!-- !!!VERSION = ARGOS3 BETA20!!! -->
     <!-- ***************************************************** -->
     <!-- *Configuration d'arène ARGoS*:
     Un seul robot apparaît au centre de l'arène, orienté vers le haut.
     L'arène est carrée 5x5 et strictement délimitée par des "murs"-->
     <!-- ***************************************************** -->
 
-<?xml version="1.0" ?>
-<argos-configuration>
 
   <!-- ************************* -->
   <!-- * General configuration * -->
