@@ -37,7 +37,7 @@
             <footbot_motor_ground implementation="rot_z_only" />
             <range_and_bearing implementation="medium" medium="rab" />
          </sensors>
-         <params script="tempCompile.lua"/>
+         <params script="oneBot_RedCircle.lua"/>
          <!-- Optionally, you can pass a script as a controller parameter: -->
          <!-- params script="../../src/testing/experiment/test_gripper.lua" / -->
       </lua_controller>
