@@ -2,7 +2,7 @@ Ceci est un dépôt git, probablement temporaire pour notre Projet d'Année "Swa
 
 Vous trouverez principalement deux types de fichier dans ce dépôt:
 
-Des fichiers (de type xml) .argos permettant de configurer l'environnement de l'expérience (arène et attributs des robots).
+Des fichiers (syntaxe xml) .argos permettant de configurer l'environnement de l'expérience (arène et attributs des robots).
 
 /!\ ***VERSION DES FICHIERS .argos: ARGOS3 BETA20*** /!\
 
