@@ -15,5 +15,3 @@ user:~path/to/directory>argos3 -c configurationFile.argos
 Vous pourrez alors commencer à utiliser argos (l'interface est asez intuitive normalement).
 
 (*) Voir http://iridia.ulb.ac.be/~cpinciroli/extra/h-414/ pour plus de détails sur l'installation de argos3 et sur argos en général.
-
-10/10/13
