@@ -6,7 +6,7 @@
 i={balance=100, country="Belgique", bank="BBL"}
 j={balance=10000000000, country="Suisse", bank="UPS"}
 
-function factorial(n)
+--[[function factorial(n)
    i=1
    for j=2,n do
       i=i*j
@@ -14,7 +14,7 @@ function factorial(n)
    return i
 end
 print(factorial(3))
-print(i.balance, j.country)
+print(i.balance, j.country)]]--
 -- >>6
 -- >>ERROR! (i "compte en banque" a été remplacé par i "compteur pour la factorielle") (Mettez les lignes 9 à 17 en commentaire)
 
@@ -81,7 +81,7 @@ print(a1.getBalance())
 -- >>50
 a1.deposit(40)
 print(a1.getBalance())
--- >>40
+-- >>90
 
 a2=newAccount{bank="ING"}
 print(a2.getBalance())
@@ -89,6 +89,7 @@ print(a2.getBalance())
 a2.deposit(40)
 print(a2.getBalance())
 -- >>40
+print(a1.getBalance())
 
 --Deux exemples d'encapsulation:
 print(a2.balance)
