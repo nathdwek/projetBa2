@@ -89,7 +89,6 @@ print(a2.getBalance())
 a2.deposit(40)
 print(a2.getBalance())
 -- >>40
-print(a1.getBalance())
 
 --Deux exemples d'encapsulation:
 print(a2.balance)
