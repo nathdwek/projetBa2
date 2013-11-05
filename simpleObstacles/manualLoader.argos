@@ -50,16 +50,16 @@
    <arena size="5, 5, 1" center="0,0,0.5">
       <floor id="f" source="image" path="../floorPictures/no_spot.png" />
 
-      <box id="bn" size="0.1, 5, 0.2" movable="false">
+      <box id="bn" size="0.1, 6, 0.2" movable="false">
          <body position="2.5,0,0"  orientation="0,0,0" />
       </box>
-      <box id="bs" size="0.1, 5, 0.2" movable="false">
+      <box id="bs" size="0.1, 6, 0.2" movable="false">
          <body position="-2.5,0,0" orientation="0,0,0" />
       </box>
-      <box id="be" size="5, 0.1, 0.2" movable="false">
+      <box id="be" size="6, 0.1, 0.2" movable="false">
          <body position="0,-2.5,0" orientation="0,0,0" />
       </box>
-      <box id="bw" size="5, 0.1, 0.2" movable="false">
+      <box id="bw" size="6, 0.1, 0.2" movable="false">
          <body position="0,2.5,0" orientation="0,0,0" />
       </box>
 
@@ -72,7 +72,13 @@
             </foot-bot>
          </entity>
       </distribute>
-
+      <distribute>
+         <position method="uniform" min="-2,-2,0" max="2,2,0" />
+         <orientation method="uniform" min="0,0,0" max="360,0,0" />
+         <entity quantity="15" max_trials="100">
+            <box id="o" size="0.2, 0.2, 0.2" movable="false" />
+         </entity>
+      </distribute>
    </arena>
 
    <!-- ******************* -->
@@ -90,9 +96,9 @@
       <led id="leds" index="grid" grid_size="1,1,1" />
    </media>
 
-   <!-- ****************** -->
+   <!-- ***************** -->
    <!-- * Visualization * -->
-   <!-- ****************** -->
+   <!-- ***************** -->
    <visualization>
 
       <!-- ************************************************************************ -->
