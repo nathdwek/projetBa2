@@ -10,8 +10,9 @@ function init()
    posX=0
    posY=0
    alpha=0
-   goalX=100
-   goalY=100
+   goalX=250-math.random()*500
+   goalY=250-math.random()*500
+   log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
 end
@@ -27,7 +28,7 @@ function step()
    odometry()
    isObstacle=closestObstacleDirection()
 
-   if (isObstacle==0 and math.abs(posX-goalX)<=(3*SPEED)/10 and math.abs(posY-goalY)<=(3*SPEED)/10) or (isObstacle>0 and math.abs(posX-goalX)<= 10 and math.abs(posY-goalY)<=10) then
+   if (isObstacle==0 and math.abs(posX-goalX)<=(3*SPEED)/10 and math.abs(posY-goalY)<=(3*SPEED)/10) or (isObstacle>0 and math.abs(posX-goalX)<= 15 and math.abs(posY-goalY)<=15) then
       travels=travels+1
       if travels>=20 then
          goalX=0
