@@ -28,7 +28,7 @@ function step()
    odometry()
    isObstacle=closestObstacleDirection()
 
-   if (isObstacle==0 and math.abs(posX-goalX)<=(3*SPEED)/10 and math.abs(posY-goalY)<=(3*SPEED)/10) or (isObstacle>0 and math.abs(posX-goalX)<= 15 and math.abs(posY-goalY)<=15) then
+   if (isObstacle==0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=(3*SPEED)/10) or (isObstacle>0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=15) then
       travels=travels+1
       if travels>=20 then
          goalX=0
