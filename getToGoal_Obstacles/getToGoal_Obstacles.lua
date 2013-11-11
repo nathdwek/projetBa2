@@ -2,14 +2,15 @@
 SPEED=5
 PI=math.pi
 CONVERGENCE=1.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
-AVOIDANCE=10 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
+AVOIDANCE=6 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
 XMIN=-245
 XMAX=245
 YMIN=-245
 YMAX=245
-TOLERANCE_FREE=5*SPEED/10
+TOLERANCE_FREE=SPEED
 TOLERANCE_OBSTACLE=20
+TRAVELS_MAX=15
 
 
 --[[ This function is executed every time you press the 'execute'
@@ -38,7 +39,11 @@ function step()
 
    if (isObstacle==0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE_FREE) or (isObstacle>0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE_OBSTACLE) then
       travels=travels+1
-      if travels>=20 then
+      if travels>TRAVELS_MAX then
+         robot.wheels.set_velocity(0,0)
+         log('back home baby')
+         return
+      elseif travels==TRAVELS_MAX then
          goalX=0
          goalY=0
       else
