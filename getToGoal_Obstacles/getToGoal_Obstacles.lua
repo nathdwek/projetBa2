@@ -10,7 +10,7 @@ YMIN=-245
 YMAX=245
 TOLERANCE_FREE=SPEED
 TOLERANCE_OBSTACLE=20
-TRAVELS_MAX=15
+TRAVELS_MAX=6
 
 
 --[[ This function is executed every time you press the 'execute'
@@ -34,16 +34,57 @@ end
      It must contain the logic of your controller ]]
 
 function step()
-   odometry()
-   isObstacle=closestObstacleDirection()
+   posX, posY, alpha=odometry(posX, posY, alpha)
+   local obstacleProximity, obstacleDirection=closestObstacleDirection()
 
-   if (isObstacle==0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE_FREE) or (isObstacle>0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE_OBSTACLE) then
-      travels=travels+1
-      if travels>TRAVELS_MAX then
-         robot.wheels.set_velocity(0,0)
-         log('back home baby')
+   if (obstacleProximity==0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE_FREE) or (obstacleProximity>0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE_OBSTACLE) then
+      goalX, goalY, travels=travelEndHandler()
+      if travels>20 then
          return
-      elseif travels==TRAVELS_MAX then
+      end
+   end
+
+   if obstacleProximity==0 then
+      getToGoal()
+   else
+      obstacleAvoidance(obstacleProximity, obstacleDirection)
+   end
+end
+
+
+function odometry(x, y, angle)
+   local deltaL=robot.wheels.distance_left
+   local deltaR=robot.wheels.distance_right
+   local deltaG=(deltaL+deltaR)/2
+   local deltaAngle=(deltaR-deltaL)/AXIS_LENGTH
+   x=x+deltaG*math.cos(angle)
+   y=y+deltaG*math.sin(angle)
+   angle=angle+deltaAngle
+   if angle>2*PI then
+      angle=angle-2*PI
+   end
+   return x,y,angle
+end
+
+function closestObstacleDirection()
+   local obstacleProximity = robot.proximity[1].value
+   local obstacleDirection = 1
+   for i=2,24 do
+      if obstacleProximity < robot.proximity[i].value then
+         obstacleDirection = i
+         obstacleProximity = robot.proximity[i].value
+      end
+   end
+   return obstacleProximity, obstacleDirection
+end
+
+function travelEndHandler()
+   travels=travels+1
+   if travels>TRAVELS_MAX then
+      robot.wheels.set_velocity(0,0)
+      log('back home baby')
+   else
+      if travels==TRAVELS_MAX then
          goalX=0
          goalY=0
       else
@@ -53,67 +94,39 @@ function step()
       log("travels done so far: ", travels)
       log("Next Goal is (", goalX, ", ", goalY, ")")
    end
+   return goalX, goalY, travels
+end
 
-   if isObstacle==0 then
-      deltaX=goalX-posX
-      deltaY=goalY-posY
-      goalDirection=math.atan(deltaY/deltaX)
-      if deltaX<0 then
-         goalDirection=goalDirection+PI
-      end
-      if goalDirection<0 then
-         goalDirection=goalDirection+2*PI
-      end
-      deltaAngle=goalDirection-alpha
-      if deltaAngle>PI then
-         deltaAngle=deltaAngle-2*PI
-      end
-      coeff=deltaAngle/PI
-      robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*SPEED, (1+CONVERGENCE*coeff)*SPEED )
+function getToGoal()
+   local deltaX=goalX-posX
+   local deltaY=goalY-posY
+   local goalDirection=math.atan(deltaY/deltaX)
+   if deltaX<0 then
+      goalDirection=goalDirection+PI
+   end
+   if goalDirection<0 then
+      goalDirection=goalDirection+2*PI
+   end
+   local goalDirRel=goalDirection-alpha
+   if goalDirRel>PI then
+      goalDirRel=goalDirRel-2*PI
+   end
+   local coeff=goalDirRel/PI
+   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*SPEED, (1+CONVERGENCE*coeff)*SPEED )
+end
 
+function obstacleAvoidance(obstacleProximity,obstacleDirection)
+   if obstacleProximity==1 then
+      logerr("Odometry data might be offset")
+   end
+   if obstacleDirection <= 12 then
+   -- The closest obstacle is between 0 and 180 degrees: soft turn towards the right
+      robot.wheels.set_velocity((22-obstacleDirection+AVOIDANCE)*SPEED/11, (obstacleDirection-AVOIDANCE)*SPEED/11)
    else
-      if isObstacle==1 then
-         log("Odometry data might be offset")
-      end
-      if obstacleDirection <= 12 then
-      -- The closest obstacle is between 0 and 180 degrees: soft turn towards the right
-         robot.wheels.set_velocity((22-obstacleDirection+AVOIDANCE)*SPEED/11, (obstacleDirection-AVOIDANCE)*SPEED/11)
-      else
-      -- The closest obstacle is between 180 and 360 degrees: soft turn towards the left
-         robot.wheels.set_velocity((25-AVOIDANCE-obstacleDirection)*SPEED/11, (-3+AVOIDANCE+obstacleDirection)*SPEED/11)
-      end
-   end
-
-   if alpha>2*PI then
-      alpha=alpha-2*PI
+   -- The closest obstacle is between 180 and 360 degrees: soft turn towards the left
+      robot.wheels.set_velocity((25-AVOIDANCE-obstacleDirection)*SPEED/11, (-3+AVOIDANCE+obstacleDirection)*SPEED/11)
    end
 end
-
-
-function odometry()
-   local deltaL=robot.wheels.distance_left
-   local deltaR=robot.wheels.distance_right
-   local deltaG=(deltaL+deltaR)/2
-   local deltaAlpha=(deltaR-deltaL)/AXIS_LENGTH
-   posX=posX+deltaG*math.cos(alpha)
-   posY=posY+deltaG*math.sin(alpha)
-   alpha=alpha+deltaAlpha
-end
-
-function closestObstacleDirection()
-   -- Search for the reading with the highest value
-   value = robot.proximity[1].value -- highest value found so far
-   obstacleDirection = 1   -- index of the highest value
-   for i=2,24 do
-      if value < robot.proximity[i].value then
-         obstacleDirection = i
-         value = robot.proximity[i].value
-      end
-   end
-   return value
-end
-
-
 
 
 
@@ -126,6 +139,9 @@ function reset()
    posX=0
    posY=0
    alpha=0
+   goalX=robot.random.uniform(XMIN,XMAX)
+   goalY=robot.random.uniform(YMIN,YMAX)
+   log("Next Goal is (", goalX, ", ", goalY, ")")
    travels=0
 end
 
