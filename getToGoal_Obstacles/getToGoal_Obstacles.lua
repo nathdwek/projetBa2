@@ -1,8 +1,8 @@
 -- Put your global variables here
 SPEED=5
 PI=math.pi
-CONVERGENCE=1.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
-AVOIDANCE=6 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
+CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
+AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
 XMIN=-245
 XMAX=245
@@ -10,7 +10,8 @@ YMIN=-245
 YMAX=245
 TOLERANCE_FREE=SPEED
 TOLERANCE_OBSTACLE=20
-TRAVELS_MAX=6
+TRAVELS_MAX=10
+OBSTACLE_PROXIMITY_DEPENDANCE=1
 
 
 --[[ This function is executed every time you press the 'execute'
@@ -24,6 +25,7 @@ function init()
    log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
+   steps=0
 end
 
 
@@ -34,6 +36,7 @@ end
      It must contain the logic of your controller ]]
 
 function step()
+   steps=steps+1
    posX, posY, alpha=odometry(posX, posY, alpha)
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
 
@@ -116,16 +119,20 @@ function getToGoal()
 end
 
 function obstacleAvoidance(obstacleProximity,obstacleDirection)
+   local vLeft, vRight
    if obstacleProximity==1 then
       logerr("Odometry data might be offset")
    end
    if obstacleDirection <= 12 then
    -- The closest obstacle is between 0 and 180 degrees: soft turn towards the right
-      robot.wheels.set_velocity((22-obstacleDirection+AVOIDANCE)*SPEED/11, (obstacleDirection-AVOIDANCE)*SPEED/11)
+      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
+      vLeft=10-vRight
    else
    -- The closest obstacle is between 180 and 360 degrees: soft turn towards the left
-      robot.wheels.set_velocity((25-AVOIDANCE-obstacleDirection)*SPEED/11, (-3+AVOIDANCE+obstacleDirection)*SPEED/11)
+      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*25-AVOIDANCE-obstacleDirection)*SPEED/11
+      vRight=10-vLeft
    end
+   robot.wheels.set_velocity(vLeft, vRight)
 end
 
 
@@ -143,6 +150,7 @@ function reset()
    goalY=robot.random.uniform(YMIN,YMAX)
    log("Next Goal is (", goalX, ", ", goalY, ")")
    travels=0
+   steps=0
 end
 
 
