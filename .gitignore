@@ -3,3 +3,4 @@ geany_run_script.sh
 .swp
 *.orig
 *~
+*OUT.*
