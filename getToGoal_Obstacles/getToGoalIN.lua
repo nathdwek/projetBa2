@@ -14,6 +14,9 @@ TRAVELS_MAX=10
 OBSTACLE_PROXIMITY_DEPENDANCE=1
 
 
+
+
+
 --[[ This function is executed every time you press the 'execute'
      button ]]
 function init()
