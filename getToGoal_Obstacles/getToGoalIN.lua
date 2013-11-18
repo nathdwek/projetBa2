@@ -4,10 +4,10 @@ PI=math.pi
 CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
-XMIN=-245
-XMAX=245
-YMIN=-245
-YMAX=245
+XMIN=-240
+XMAX=240
+YMIN=-240
+YMAX=240
 TOLERANCE_FREE=SPEED
 TOLERANCE_OBSTACLE=20
 TRAVELS_MAX=10
