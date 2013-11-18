@@ -26,7 +26,9 @@ def fileInserter(startingPositionsDict, fileIn, fileOut, fileType, fileWhereInse
    newFile=open(fileOut+"."+fileType, 'w')
    for originalLine in originalLines[:fileWhereInsert]:
       newFile.write(originalLine)
+
    positionsInserter(newFile, startingPositionsDict, fileType)
+
    for originalLine in originalLines[fileWhereInsert:]:
       newFile.write(originalLine)
    newFile.close
@@ -39,7 +41,13 @@ def positionsInserter(newFile, startingPositionsDict, fileType):
          newFile.write('<controller config="lua" />\n</foot-bot>\n')
       newFile.write('\n')
    if fileType=="lua":
-      pass
+      newFile.write("STARTINGPOSITIONSTABLE={\n")
+      for robotName in startingPositionsDict:
+         newFile.write(robotName+"={\n")
+         newFile.write("posX="+str(startingPositionsDict[robotName][0])+",\n")
+         newFile.write("posY="+str(startingPositionsDict[robotName][1])+",\n")
+         newFile.write("alpha="+str(startingPositionsDict[robotName][2])+"\n},\n")
+      newFile.write("}")
 
 def toArgosPosition(positionList):
    x=positionList[0]/100
@@ -52,6 +60,6 @@ def toArgosOrientation(positionList):
 
 if __name__=="__main__":
    startingPositionsDict=startingPositionsGenerator(robotsCount=int(argv[1]))
-   #fileInserter(startingPositionsDict, argv[2], argv[3], "lua", 16)
+   fileInserter(startingPositionsDict, argv[2], argv[3], "lua", 16)
    fileInserter(startingPositionsDict, argv[2], argv[3], "argos", 70)
 

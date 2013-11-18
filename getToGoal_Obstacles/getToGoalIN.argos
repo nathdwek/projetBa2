@@ -71,7 +71,6 @@
 
 
 
-      </distribute>
       <distribute>
          <position method="uniform" min="-2,-2,0" max="2,2,0" />
          <orientation method="uniform" min="0,0,0" max="360,0,0" />
