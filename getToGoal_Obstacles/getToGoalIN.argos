@@ -41,7 +41,7 @@
             <differential_steering implementation="default" />
          </sensors>
          <!-- No required configuration -->
-         <params script="getToGoal_Obstacles.lua"/>
+         <params script="getToGoalOUT.lua"/>
          <!-- Optionally, you can pass a script as a controller parameter: -->
          <!-- params script="../../src/testing/experiment/test_gripper.lua" / -->
       </lua_controller>
