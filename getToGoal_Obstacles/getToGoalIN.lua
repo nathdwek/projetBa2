@@ -85,7 +85,6 @@ function travelEndHandler()
    travels=travels+1
    if travels>TRAVELS_MAX then
       robot.wheels.set_velocity(0,0)
-      log('back home baby')
    else
       if travels==TRAVELS_MAX then
          goalX=0
