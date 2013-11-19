@@ -2,7 +2,7 @@ from random import randint, uniform
 from math import sqrt, pi
 from sys import argv
 
-def startingPositionsGenerator(xMin=-50, xMax=50, yMin=-50, yMax=50, angleMax=2*pi, robotsCount=10, robotName="fb", spacing=22):
+def startingPositionsDictGenerator(xMin=-50, xMax=50, yMin=-50, yMax=50, angleMax=2*pi, robotsCount=10, robotName="fb", spacing=22):
    startingPositionsDict={}
    for i in range(robotsCount):
       x,y=placeARobot(startingPositionsDict, xMin, xMax, yMin, yMax, spacing)
