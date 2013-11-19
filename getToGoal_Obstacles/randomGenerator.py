@@ -65,7 +65,7 @@ def toArgosOrientation(positionList):
    return str(orientation)+",0,0"
 
 if __name__=="__main__":
-   startingPositionsDict=startingPositionsGenerator(robotsCount=int(argv[1]))
+   startingPositionsDict=startingPositionsDictGenerator(robotsCount=int(argv[1]))
    fileInserter(startingPositionsDict, argv[2], argv[3], "lua", 16)
    fileInserter(startingPositionsDict, argv[2], argv[3], "argos", 70)
 
