@@ -79,8 +79,8 @@
       <distribute>
          <position method="uniform" min="-2,-2,0" max="2,2,0" />
          <orientation method="uniform" min="0,0,0" max="360,0,0" />
-         <entity quantity="30" max_trials="100">
-            <box id="o" size="0.2, 0.2, 0.2" movable="false" />
+         <entity quantity="20" max_trials="100">
+            <cylinder id="o" radius="0.1" height="0.2" movable="false" />
          </entity>
       </distribute>
    </arena>
