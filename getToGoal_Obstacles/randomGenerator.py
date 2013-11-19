@@ -5,13 +5,17 @@ from sys import argv
 def startingPositionsGenerator(xMin=-50, xMax=50, yMin=-50, yMax=50, angleMax=2*pi, robotsCount=10, robotName="fb", spacing=22):
    startingPositionsDict={}
    for i in range(robotsCount):
-      collisions=True
-      while collisions:
-         x=randint(xMin, xMax)
-         y=randint(yMin, yMax)
-         collisions=collisionsChecker(x,y,startingPositionsDict, spacing)
+      x,y=placeARobot(startingPositionsDict, xMin, xMax, yMin, yMax, spacing)
       startingPositionsDict[robotName+str(i)]=[x,y,uniform(0,angleMax)]
    return startingPositionsDict
+
+def placeARobot(startingPositionsDict, xMin, xMax, yMin, yMax, spacing):
+   collisions=True
+   while collisions:
+      x=randint(xMin, xMax)
+      y=randint(yMin, yMax)
+      collisions=collisionsChecker(x,y,startingPositionsDict, spacing)
+   return x,y
 
 def collisionsChecker(x,y,startingPositionsDict, spacing):
    for positionList in startingPositionsDict.values():
@@ -20,18 +24,20 @@ def collisionsChecker(x,y,startingPositionsDict, spacing):
    return False
 
 def fileInserter(startingPositionsDict, fileIn, fileOut, fileType, fileWhereInsert):
-   originalFile=open(fileIn+"."+fileType, "r")
-   originalLines=originalFile.readlines()
-   originalFile.close()
+   originalLines=getLines(fileIn, fileType)
    newFile=open(fileOut+"."+fileType, 'w')
    for originalLine in originalLines[:fileWhereInsert]:
       newFile.write(originalLine)
-
    positionsInserter(newFile, startingPositionsDict, fileType)
-
    for originalLine in originalLines[fileWhereInsert:]:
       newFile.write(originalLine)
    newFile.close
+
+def getLines(fileIn, fileType):
+   originalFile=open(fileIn+"."+fileType, "r")
+   originalLines=originalFile.readlines()
+   originalFile.close()
+   return originalLines
 
 def positionsInserter(newFile, startingPositionsDict, fileType):
    if fileType=="argos":
