@@ -4,14 +4,14 @@ PI=math.pi
 CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
-XMIN=-240
-XMAX=240
-YMIN=-240
-YMAX=240
-TOLERANCE_FREE=SPEED
-TOLERANCE_OBSTACLE=20
+OBSTACLE_PROXIMITY_DEPENDANCE=2
+XMIN=-400
+XMAX=400
+YMIN=-400
+YMAX=400
+TOLERANCE=50
 TRAVELS_MAX=10
-OBSTACLE_PROXIMITY_DEPENDANCE=1
+
 
 
 
@@ -43,7 +43,7 @@ function step()
    posX, posY, alpha=odometry(posX, posY, alpha)
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
 
-   if (obstacleProximity==0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE_FREE) or (obstacleProximity>0 and math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE_OBSTACLE) then
+   if math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE then
       goalX, goalY, travels=travelEndHandler()
       if travels>20 then
          return
