@@ -1,3 +1,19 @@
+# ############################################################### #
+#Ce fichier script python permet de faire apparaître les robots au#
+#hasard dans l'arène tout en disposant des informations sur les po#
+#sitions et orientations initiales des robots dans le fichier .lua#
+#Si vous appelez ce script dans le terminal, vous devez lui passer#
+#trois arguments : le nombre de robots à faire apparaître dans l' #
+#arène, le (même) nom des deux fichiers argos et lua de départ et #
+#et le (même) nom des deux fichiers argos et lua qui seront géné  #
+# rés.########################################################### #
+
+#Exemple : python3 randomGenerator.py 10 getToGoalIN getToGoalOUT #
+#(getToGoalIN.argos et getToGoalIN.lua sont déjà présents dans ce #
+#répertoire dans ce dépôt).###################################### #
+
+# ############################################################### #
+
 from random import randint, uniform
 from math import sqrt, pi
 from sys import argv
