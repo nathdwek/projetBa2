@@ -60,7 +60,7 @@ def fileInserter(startingPositionsDict, fileIn, fileOut, fileType, fileWhereInse
    Valeur de Retour:
       None
    """
-   originalLines=getLines(fileIn, fileType)
+   originalLines=getLines(fileIn, fileType, fileOut)
    newFile=open(fileOut+"."+fileType, 'w')
    for originalLine in originalLines[:fileWhereInsert]:
       newFile.write(originalLine)
@@ -69,8 +69,8 @@ def fileInserter(startingPositionsDict, fileIn, fileOut, fileType, fileWhereInse
       newFile.write(originalLine)
    newFile.close
 
-def getLines(fileIn, fileType):
-   """Fonction qui consulte un fichier et qui renvoie la liste des lignes de ce fichier.
+def getLines(fileIn, fileType, fileOut):
+   """Fonction qui consulte un fichier et qui renvoie la liste des lignes de ce fichier. Cette fonction appelle aussi la fonction qui insère la ligne argos permettant de charger automatiquement le comportement lua associé (pour les fichiers argos).
    Arguments:
       fileIn (string): nom du fichier à consulter.
       fileType (string): extension du fichier à consulter.
@@ -79,8 +79,22 @@ def getLines(fileIn, fileType):
    """
    originalFile=open(fileIn+"."+fileType, "r")
    originalLines=originalFile.readlines()
+   if fileType=="argos":
+      insertParamsScript(originalLines, fileOut)
    originalFile.close()
    return originalLines
+
+def insertParamsScript(originalLines, fileOut):
+   """fonction qui insère la ligne argos permettant de charger automatiquement le comportement lua associé (pour les fichiers argos).
+   Arguments:
+      originalLines (list): Liste des lignes extraites du fichier original (contenant toutes les informations sauf celles concernant les positions et orientations de départ des robots)
+      fileOut (string): le nom du fichier ou écrire le résultat final ("fileIN+données sur les positions et orientations de départ robots"). ATTENTION Cette fonction ne se comporte bien que si fileOut est le même pour le fichier ARGoS et le fichier lua. Dans ce cas, elle les associe l'un à l'autre lors de l'éxécution d'ARGoS
+   Valeur de retour:
+      None (modifie une liste)
+   """
+   for i in range(len(originalLines)):
+      if "<!-- params script=" in originalLines[i]:
+         originalLines[i]='<params script="'+fileOut+'.lua"/>'
 
 def positionsInserter(newFile, startingPositionsDict, fileType):
    """Fonction qui s'occupe spécifiquement d'insérer les lignes contenant les informations sur les positions de départ des robots dans l'arène.
