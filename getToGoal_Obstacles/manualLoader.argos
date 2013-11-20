@@ -70,9 +70,9 @@
          </entity>
       </distribute>
       <distribute>
-         <position method="uniform" min="-2,-2,0" max="2,2,0" />
+         <position method="uniform" min="-5,-5,0" max="5,5,0" />
          <orientation method="uniform" min="0,0,0" max="360,0,0" />
-         <entity quantity="20" max_trials="100">
+         <entity quantity="40" max_trials="100">
             <cylinder id="o" radius="0.1" height="0.2" movable="false" />
          </entity>
       </distribute>
@@ -103,9 +103,7 @@
       <!-- ************************************************************************ -->
       <qt-opengl lua_editor="true">
          <camera>
-            <placement idx="0" position="0,0,3" look_at="0,0,0" lens_focal_length="14" />
-            <placement idx="1" position="-2.5,0,2,5" look_at="0,0,0" lens_focal_length="20" />
-            <placement idx="2" position="-2.5,-2.5,2,5" look_at="0,0,0" lens_focal_length="20" />
+            <placement idx="0" position="0,0,3" look_at="0,0,0" lens_focal_length="7" />
          </camera>
       </qt-opengl>
 
