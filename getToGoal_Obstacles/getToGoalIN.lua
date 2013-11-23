@@ -1,10 +1,10 @@
 -- Put your global variables here
 SPEED=5
 PI=math.pi
-CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
+CONVERGENCE=1 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
-OBSTACLE_PROXIMITY_DEPENDANCE=2
+OBSTACLE_PROXIMITY_DEPENDANCE=3
 XMIN=-400
 XMAX=400
 YMIN=-400
@@ -39,26 +39,25 @@ end
      It must contain the logic of your controller ]]
 
 function step()
-   steps=steps+1
-   posX, posY, alpha=odometry(posX, posY, alpha)
+   posX, posY, alpha, steps=odometry(posX, posY, alpha, steps)
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
 
    if math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE then
-      goalX, goalY, travels=travelEndHandler()
-      if travels>20 then
+      goalX, goalY, travels=travelEndHandler(travels)
+      if travels>TRAVELS_MAX then
          return
       end
    end
 
    if obstacleProximity==0 then
-      getToGoal()
+      getToGoal(posX, posY, alpha, goalX, goalY)
    else
       obstacleAvoidance(obstacleProximity, obstacleDirection)
    end
 end
 
 
-function odometry(x, y, angle)
+function odometry(x, y, angle, steps)
    local deltaL=robot.wheels.distance_left
    local deltaR=robot.wheels.distance_right
    local deltaG=(deltaL+deltaR)/2
@@ -69,12 +68,12 @@ function odometry(x, y, angle)
    if angle>2*PI then
       angle=angle-2*PI
    end
-   return x,y,angle
+   return x,y,angle, steps+1
 end
 
 function closestObstacleDirection()
-   local obstacleProximity = robot.proximity[1].value
    local obstacleDirection = 1
+   local obstacleProximity = robot.proximity[1].value
    for i=2,24 do
       if obstacleProximity < robot.proximity[i].value then
          obstacleDirection = i
@@ -84,7 +83,7 @@ function closestObstacleDirection()
    return obstacleProximity, obstacleDirection
 end
 
-function travelEndHandler()
+function travelEndHandler(travels)
    travels=travels+1
    if travels>TRAVELS_MAX then
       robot.wheels.set_velocity(0,0)
@@ -102,7 +101,14 @@ function travelEndHandler()
    return goalX, goalY, travels
 end
 
-function getToGoal()
+function getToGoal(posX, posY, alpha, goalX, goalY)
+   goalDirection=findGoalDirection(posX, posY, goalX, goalY)
+   goalAngle=findGoalAngle(goalDirection, alpha)
+   local coeff=goalAngle/PI
+   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*SPEED, (1+CONVERGENCE*coeff)*SPEED )
+end
+
+function findGoalDirection(posX, posY, goalX, goalY)
    local deltaX=goalX-posX
    local deltaY=goalY-posY
    local goalDirection=math.atan(deltaY/deltaX)
@@ -112,12 +118,15 @@ function getToGoal()
    if goalDirection<0 then
       goalDirection=goalDirection+2*PI
    end
-   local goalDirRel=goalDirection-alpha
-   if goalDirRel>PI then
-      goalDirRel=goalDirRel-2*PI
+   return goalDirection
+end
+
+function findGoalAngle(posX, posY, goalX, goalY)
+   local goalAngle=goalDirection-alpha
+   if goalAngle>PI then
+      goalAngle=goalAngle-2*PI
    end
-   local coeff=goalDirRel/PI
-   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*SPEED, (1+CONVERGENCE*coeff)*SPEED )
+   return goalAngle
 end
 
 function obstacleAvoidance(obstacleProximity,obstacleDirection)
@@ -136,8 +145,6 @@ function obstacleAvoidance(obstacleProximity,obstacleDirection)
    end
    robot.wheels.set_velocity(vLeft, vRight)
 end
-
-
 
 --[[ This function is executed every time you press the 'reset'
      button in the GUI. It is supposed to restore the state
