@@ -11,7 +11,8 @@ YMIN=-400
 YMAX=400
 TOLERANCE=50
 TRAVELS_MAX=10
-
+RESSOURCEX=400
+RESSOURCEY=350
 
 
 
@@ -23,8 +24,8 @@ function init()
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
-   goalX=robot.random.uniform(XMIN,XMAX)
-   goalY=robot.random.uniform(YMIN,YMAX)
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
@@ -55,8 +56,8 @@ end
 function travelEndHandler(travels)
    travels=travels+1
    if travels%2==0 then
-      goalX=robot.random.uniform(XMIN,XMAX)
-      goalY=robot.random.uniform(YMIN,YMAX)
+      goalX=RESSOURCEX
+      goalY=RESSOURCEY
    else
       goalX=0
       goalY=0
@@ -152,8 +153,8 @@ function reset()
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
-   goalX=robot.random.uniform(XMIN,XMAX)
-   goalY=robot.random.uniform(YMIN,YMAX)
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
    travels=0
    steps=0
