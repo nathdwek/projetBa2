@@ -41,21 +41,38 @@ end
 function step()
    posX, posY, alpha, steps=odometry(posX, posY, alpha, steps)
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
+   travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY)
+   move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
+end
 
+function checkGoalReached(posX, posY, goalX, goalY)
    if math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE then
       goalX, goalY, travels=travelEndHandler(travels)
-      if travels>TRAVELS_MAX then
-         return
-      end
    end
+   return travels, goalX, goalY
+end
 
+function travelEndHandler(travels)
+   travels=travels+1
+   if travels%2==0 then
+      goalX=robot.random.uniform(XMIN,XMAX)
+      goalY=robot.random.uniform(YMIN,YMAX)
+   else
+      goalX=0
+      goalY=0
+   end
+   log(robot.id, ": travels done so far: ", travels)
+   log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
+   return goalX, goalY, travels
+end
+
+function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
    if obstacleProximity==0 then
       getToGoal(posX, posY, alpha, goalX, goalY)
    else
       obstacleAvoidance(obstacleProximity, obstacleDirection)
    end
 end
-
 
 function odometry(x, y, angle, steps)
    local deltaL=robot.wheels.distance_left
@@ -81,24 +98,6 @@ function closestObstacleDirection()
       end
    end
    return obstacleProximity, obstacleDirection
-end
-
-function travelEndHandler(travels)
-   travels=travels+1
-   if travels>TRAVELS_MAX then
-      robot.wheels.set_velocity(0,0)
-   else
-      if travels==TRAVELS_MAX then
-         goalX=0
-         goalY=0
-      else
-         goalX=robot.random.uniform(XMIN,XMAX)
-         goalY=robot.random.uniform(YMIN,YMAX)
-      end
-      log("travels done so far: ", travels)
-      log("Next Goal is (", goalX, ", ", goalY, ")")
-   end
-   return goalX, goalY, travels
 end
 
 function getToGoal(posX, posY, alpha, goalX, goalY)
