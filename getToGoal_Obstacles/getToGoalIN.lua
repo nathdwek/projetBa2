@@ -5,10 +5,10 @@ CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
 OBSTACLE_PROXIMITY_DEPENDANCE=2
-XMIN=-400
-XMAX=400
-YMIN=-400
-YMAX=400
+XMIN=-500
+XMAX=500
+YMIN=-500
+YMAX=500
 TOLERANCE=50
 TRAVELS_MAX=10
 
@@ -23,8 +23,10 @@ function init()
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
-   goalX=robot.random.uniform(XMIN,XMAX)
-   goalY=robot.random.uniform(YMIN,YMAX)
+   goalX = 400
+   goalY = 350
+   --goalX=robot.random.uniform(XMIN,XMAX)
+   --goalY=robot.random.uniform(YMIN,YMAX)
    log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
@@ -58,6 +60,18 @@ function step()
 end
 
 
+function isPairs(TRAVELS_MAX, travels)
+    j = 0
+    bool = false
+    while j <= TRAVELS_MAX do
+        if j == travels then
+            bool = true
+        end
+        j = j+2
+    end
+    return bool
+end
+
 function odometry(x, y, angle)
    local deltaL=robot.wheels.distance_left
    local deltaR=robot.wheels.distance_right
@@ -89,12 +103,12 @@ function travelEndHandler()
    if travels>TRAVELS_MAX then
       robot.wheels.set_velocity(0,0)
    else
-      if travels==TRAVELS_MAX then
+      if isPairs(TRAVELS_MAX, travels) then
          goalX=0
          goalY=0
       else
-         goalX=robot.random.uniform(XMIN,XMAX)
-         goalY=robot.random.uniform(YMIN,YMAX)
+         goalX=400
+         goalY=350
       end
       log("travels done so far: ", travels)
       log("Next Goal is (", goalX, ", ", goalY, ")")
