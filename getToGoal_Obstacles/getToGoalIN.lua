@@ -11,6 +11,7 @@ YMIN=-400
 YMAX=400
 TOLERANCE=50
 TRAVELS_MAX=10
+BATT_BY_STEP = 0.01
 
 
 
@@ -29,6 +30,7 @@ function init()
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
    steps=0
+	batt_rest=100
 end
 
 
@@ -39,10 +41,14 @@ end
      It must contain the logic of your controller ]]
 
 function step()
+	batt_rest = batt_rest - BATT_BY_STEP
    posX, posY, alpha, steps=odometry(posX, posY, alpha, steps)
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
    travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY)
    move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
+	if robot.id=="fb0" then
+		log(batt_rest)
+	end
 end
 
 function checkGoalReached(posX, posY, goalX, goalY)
@@ -57,6 +63,7 @@ function travelEndHandler(travels)
    if travels%2==0 then
       goalX=robot.random.uniform(XMIN,XMAX)
       goalY=robot.random.uniform(YMIN,YMAX)
+		batt_rest=100
    else
       goalX=0
       goalY=0
@@ -157,6 +164,7 @@ function reset()
    log("Next Goal is (", goalX, ", ", goalY, ")")
    travels=0
    steps=0
+	batt_rest=100
 end
 
 
