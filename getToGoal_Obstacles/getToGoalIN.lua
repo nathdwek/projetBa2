@@ -12,43 +12,44 @@ YMAX=400
 TOLERANCE=50
 TRAVELS_MAX=10
 BATT_BY_STEP = 0.01
+RESSOURCEX=400
+RESSOURCEY=350
 
 
 
 
 
 
---[[ This function is executed every time you press the 'execute'
-     button ]]
+
+
+--This function is executed every time you press the 'execute' button
 function init()
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
-   goalX=robot.random.uniform(XMIN,XMAX)
-   goalY=robot.random.uniform(YMIN,YMAX)
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
    steps=0
-	batt_rest=100
+   batt_rest=100
 end
 
 
 
 
 
---[[ This function is executed at each time step
-     It must contain the logic of your controller ]]
-
+--This function is executed at each time step. It must contain the logic of your controller
 function step()
-	batt_rest = batt_rest - BATT_BY_STEP
+   batt_rest = batt_rest - BATT_BY_STEP
    posX, posY, alpha, steps=odometry(posX, posY, alpha, steps)
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
    travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY)
    move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
-	if robot.id=="fb0" then
-		log(batt_rest)
-	end
+   if robot.id=="fb0" then
+      log(batt_rest)
+   end
 end
 
 function checkGoalReached(posX, posY, goalX, goalY)
@@ -61,9 +62,9 @@ end
 function travelEndHandler(travels)
    travels=travels+1
    if travels%2==0 then
-      goalX=robot.random.uniform(XMIN,XMAX)
-      goalY=robot.random.uniform(YMIN,YMAX)
-		batt_rest=100
+      batt_rest=100
+      goalX=RESSOURCEX
+      goalY=RESSOURCEY
    else
       goalX=0
       goalY=0
@@ -150,27 +151,27 @@ function obstacleAvoidance(obstacleProximity,obstacleDirection)
    robot.wheels.set_velocity(vLeft, vRight)
 end
 
---[[ This function is executed every time you press the 'reset'
-     button in the GUI. It is supposed to restore the state
-     of the controller to whatever it was right after init() was
-     called. The state of sensors and actuators is reset
-     automatically by ARGoS. ]]
+--[[This function is executed every time you press the 'reset'
+   button in the GUI. It is supposed to restore the state
+   of the controller to whatever it was right after init() was
+   called. The state of sensors and actuators is reset
+   automatically by ARGoS.
+]]
 function reset()
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
-   goalX=robot.random.uniform(XMIN,XMAX)
-   goalY=robot.random.uniform(YMIN,YMAX)
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
    travels=0
    steps=0
-	batt_rest=100
+   batt_rest=100
 end
 
 
 
---[[ This function is executed only once, when the robot is removed
-     from the simulation ]]
+--This function is executed only once, when the robot is removedfrom the simulation
 function destroy()
    -- put your code here
 end
