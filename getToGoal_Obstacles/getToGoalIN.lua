@@ -1,17 +1,18 @@
 -- Put your global variables here
 SPEED=5
 PI=math.pi
-CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
+CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
-OBSTACLE_PROXIMITY_DEPENDANCE=2
-XMIN=-500
-XMAX=500
-YMIN=-500
-YMAX=500
+OBSTACLE_PROXIMITY_DEPENDANCE=3
+XMIN=-400
+XMAX=400
+YMIN=-400
+YMAX=400
 TOLERANCE=50
 TRAVELS_MAX=10
-
+RESSOURCEX=400
+RESSOURCEY=350
 
 
 
@@ -23,10 +24,8 @@ function init()
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
-   goalX = 400
-   goalY = 350
-   --goalX=robot.random.uniform(XMIN,XMAX)
-   --goalY=robot.random.uniform(YMIN,YMAX)
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
@@ -41,38 +40,42 @@ end
      It must contain the logic of your controller ]]
 
 function step()
-   steps=steps+1
-   posX, posY, alpha=odometry(posX, posY, alpha)
+   posX, posY, alpha, steps=odometry(posX, posY, alpha, steps)
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
+   travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY)
+   move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
+end
 
+function checkGoalReached(posX, posY, goalX, goalY)
    if math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE then
-      goalX, goalY, travels=travelEndHandler()
-      if travels>20 then
-         return
-      end
+      goalX, goalY, travels=travelEndHandler(travels)
    end
+   return travels, goalX, goalY
+end
 
+function travelEndHandler(travels)
+   travels=travels+1
+   if travels%2==0 then
+      goalX=RESSOURCEX
+      goalY=RESSOURCEY
+   else
+      goalX=0
+      goalY=0
+   end
+   log(robot.id, ": travels done so far: ", travels)
+   log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
+   return goalX, goalY, travels
+end
+
+function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
    if obstacleProximity==0 then
-      getToGoal()
+      getToGoal(posX, posY, alpha, goalX, goalY)
    else
       obstacleAvoidance(obstacleProximity, obstacleDirection)
    end
 end
 
-
-function isPairs(TRAVELS_MAX, travels)
-    j = 0
-    bool = false
-    while j <= TRAVELS_MAX do
-        if j == travels then
-            bool = true
-        end
-        j = j+2
-    end
-    return bool
-end
-
-function odometry(x, y, angle)
+function odometry(x, y, angle, steps)
    local deltaL=robot.wheels.distance_left
    local deltaR=robot.wheels.distance_right
    local deltaG=(deltaL+deltaR)/2
@@ -83,12 +86,12 @@ function odometry(x, y, angle)
    if angle>2*PI then
       angle=angle-2*PI
    end
-   return x,y,angle
+   return x,y,angle, steps+1
 end
 
 function closestObstacleDirection()
-   local obstacleProximity = robot.proximity[1].value
    local obstacleDirection = 1
+   local obstacleProximity = robot.proximity[1].value
    for i=2,24 do
       if obstacleProximity < robot.proximity[i].value then
          obstacleDirection = i
@@ -98,25 +101,14 @@ function closestObstacleDirection()
    return obstacleProximity, obstacleDirection
 end
 
-function travelEndHandler()
-   travels=travels+1
-   if travels>TRAVELS_MAX then
-      robot.wheels.set_velocity(0,0)
-   else
-      if isPairs(TRAVELS_MAX, travels) then
-         goalX=0
-         goalY=0
-      else
-         goalX=400
-         goalY=350
-      end
-      log("travels done so far: ", travels)
-      log("Next Goal is (", goalX, ", ", goalY, ")")
-   end
-   return goalX, goalY, travels
+function getToGoal(posX, posY, alpha, goalX, goalY)
+   goalDirection=findGoalDirection(posX, posY, goalX, goalY)
+   goalAngle=findGoalAngle(goalDirection, alpha)
+   local coeff=goalAngle/PI
+   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*SPEED, (1+CONVERGENCE*coeff)*SPEED )
 end
 
-function getToGoal()
+function findGoalDirection(posX, posY, goalX, goalY)
    local deltaX=goalX-posX
    local deltaY=goalY-posY
    local goalDirection=math.atan(deltaY/deltaX)
@@ -126,32 +118,31 @@ function getToGoal()
    if goalDirection<0 then
       goalDirection=goalDirection+2*PI
    end
-   local goalDirRel=goalDirection-alpha
-   if goalDirRel>PI then
-      goalDirRel=goalDirRel-2*PI
+   return goalDirection
+end
+
+function findGoalAngle(posX, posY, goalX, goalY)
+   local goalAngle=goalDirection-alpha
+   if goalAngle>PI then
+      goalAngle=goalAngle-2*PI
    end
-   local coeff=goalDirRel/PI
-   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*SPEED, (1+CONVERGENCE*coeff)*SPEED )
+   return goalAngle
 end
 
 function obstacleAvoidance(obstacleProximity,obstacleDirection)
    local vLeft, vRight
    if obstacleProximity==1 then
-      logerr("Odometry data might be offset")
+      logerr(robot.id, ": Odometry data might be offset")
    end
    if obstacleDirection <= 12 then
-   -- The closest obstacle is between 0 and 180 degrees: soft turn towards the right
       vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
       vLeft=10-vRight
    else
-   -- The closest obstacle is between 180 and 360 degrees: soft turn towards the left
       vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*25-AVOIDANCE-obstacleDirection)*SPEED/11
       vRight=10-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
 end
-
-
 
 --[[ This function is executed every time you press the 'reset'
      button in the GUI. It is supposed to restore the state
@@ -162,8 +153,8 @@ function reset()
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
-   goalX=robot.random.uniform(XMIN,XMAX)
-   goalY=robot.random.uniform(YMIN,YMAX)
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
    travels=0
    steps=0
