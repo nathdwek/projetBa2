@@ -47,8 +47,8 @@ function step()
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
    travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY)
    move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
-   if robot.id=="fb0" then
-      log(batt_rest)
+   if batt_rest<=0 then
+      log(robot.id, ": battery empty")
    end
 end
 
@@ -87,6 +87,9 @@ function odometry(x, y, angle, steps)
    local deltaR=robot.wheels.distance_right
    local deltaG=(deltaL+deltaR)/2
    local deltaAngle=(deltaR-deltaL)/AXIS_LENGTH
+   if math.abs(deltaG-SPEED/10)>1E-7 then
+      log(robot.id, ": problem: deltaG is: ", deltaG)
+   end
    x=x+deltaG*math.cos(angle)
    y=y+deltaG*math.sin(angle)
    angle=angle+deltaAngle
@@ -143,10 +146,10 @@ function obstacleAvoidance(obstacleProximity,obstacleDirection)
    end
    if obstacleDirection <= 12 then
       vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
-      vLeft=10-vRight
+      vLeft=2*SPEED-vRight
    else
       vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*25-AVOIDANCE-obstacleDirection)*SPEED/11
-      vRight=10-vLeft
+      vRight=2*SPEED-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
 end
