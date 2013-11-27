@@ -14,14 +14,14 @@
 
 # ############################################################### #
 
-from random import randint, uniform
-from math import sqrt, pi
+from random import uniform
+from math import sqrt, pi, cos, sin
 from sys import argv
 
-def startingPositionsDictGenerator(xMin=-50, xMax=50, yMin=-50, yMax=50, angleMax=2*pi, robotsCount=10, robotName="fb", spacing=22):
+def startingPositionsDictGenerator(rMax=50, thetaMax=2*pi, angleMax=2*pi, robotsCount=10, robotName="fb", spacing=22):
    """Fonction qui génère de manière aléatoire les positions et orientations de départ dans l'arène des robots.
    Arguments:
-      xMin, xMax, yMin, yMax, angleMax (float): les paramètres de la distribution des robots.
+      rMax, thetaMax, angleMax (float): les paramètres de la distribution des robots.
       robotsCount (int): le nombre de robots à faire apparaître dans l'arène.
       robotName (str): le préfixe à l'id de chaque robot.
       spacing (float): l'espacement minimum des robots (pris centre à centre dans le plan XY).
@@ -30,14 +30,14 @@ def startingPositionsDictGenerator(xMin=-50, xMax=50, yMin=-50, yMax=50, angleMa
    """
    startingPositionsDict={}
    for i in range(robotsCount):
-      x,y=placeARobot(startingPositionsDict, xMin, xMax, yMin, yMax, spacing)
+      x,y=placeARobot(startingPositionsDict, rMax, thetaMax, spacing)
       startingPositionsDict[robotName+str(i)]=(x,y,uniform(0,angleMax))
    return startingPositionsDict
 
-def placeARobot(startingPositionsDict, xMin, xMax, yMin, yMax, spacing):
+def placeARobot(startingPositionsDict, rMax, thetaMax, spacing):
    """fonction qui génère une position de départ aléatoire d'un robot dans l'arène en veillant à éviter les conflits entre robots.
    Arguments:
-      xMin, xMax, yMin, yMax (float): paramètres de la distribution des robots.
+      rMax, thetaMax (float): paramètres de la distribution des robots.
       startingPositionsDict (dict): dictionnaire contenant les informations sur les robots déjà présents dans l'arène. Les clés sont les ids des robots et les valeurs sont des tuples (coorodonnée x, coordonnée y,orientation) de départ du robot.
       spacing (float): l'espacement minimum des robots (pris centre à centre dans le plan XY).
    Valeurs de retour:
@@ -45,8 +45,10 @@ def placeARobot(startingPositionsDict, xMin, xMax, yMin, yMax, spacing):
    """
    collisions=True
    while collisions:
-      x=randint(xMin, xMax)
-      y=randint(yMin, yMax)
+      r=uniform(0,rMax)
+      theta=uniform(0, thetaMax)
+      x=r*cos(theta)
+      y=r*sin(theta)
       collisions=collisionsChecker(x,y,startingPositionsDict, spacing)
    return x,y
 
