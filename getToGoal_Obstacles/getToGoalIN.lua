@@ -53,10 +53,17 @@ function step()
 end
 
 function checkGoalReached(posX, posY, goalX, goalY)
-   if math.sqrt((posX-goalX)^2+(posY-goalY)^2)<=TOLERANCE then
+   if floorIsBlack() then
       goalX, goalY, travels=travelEndHandler(travels)
    end
    return travels, goalX, goalY
+end
+
+function floorIsBlack()
+   for i=1,12 do
+      if robot.base_ground[i].value)==1 then
+         return false
+   return true
 end
 
 function travelEndHandler(travels)
