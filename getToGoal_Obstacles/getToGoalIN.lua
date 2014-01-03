@@ -4,7 +4,7 @@ PI=math.pi
 CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
-OBSTACLE_PROXIMITY_DEPENDANCE=3
+OBSTACLE_PROXIMITY_DEPENDANCE=1
 XMIN=-400
 XMAX=400
 YMIN=-400
@@ -148,7 +148,7 @@ function obstacleAvoidance(obstacleProximity,obstacleDirection)
       vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
       vLeft=2*SPEED-vRight
    else
-      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*25-AVOIDANCE-obstacleDirection)*SPEED/11
+      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*SPEED/11
       vRight=2*SPEED-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
