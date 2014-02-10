@@ -5,6 +5,7 @@ CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 mea
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
 OBSTACLE_PROXIMITY_DEPENDANCE=1
+AVOIDANCE_RANDOMIZATION=0.8
 XMIN=-400
 XMAX=400
 YMIN=-400
@@ -144,11 +145,13 @@ function obstacleAvoidance(obstacleProximity,obstacleDirection)
    if obstacleProximity==1 then
       logerr(robot.id, ": Odometry data might be offset")
    end
-   if obstacleDirection <= 12 then
+   if obstacleDirection <= 12 then --Obstacle is to the left
       vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
+      vRight=robot.random.uniform(1,1+AVOIDANCE_RANDOMIZATION)*vRight
       vLeft=2*SPEED-vRight
-   else
+   else --Obstacle is to the right
       vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*SPEED/11
+      vLeft=robot.random.uniform(1,1+AVOIDANCE_RANDOMIZATION)*vLeft
       vRight=2*SPEED-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
