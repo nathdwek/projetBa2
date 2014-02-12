@@ -18,11 +18,6 @@ RESSOURCEY=350
 
 
 
---Randomize avoidance and convergence (multiply by number between 0.9 and 1.1) to prevent cyclic problems.
-
-
-
-
 --This function is executed every time you press the 'execute' button
 function init()
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
