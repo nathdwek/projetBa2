@@ -142,13 +142,21 @@ function obstacleAvoidance(obstacleProximity,obstacleDirection)
    end
    if obstacleDirection <= 12 then --Obstacle is to the left
       vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
-      vRight=robot.random.uniform(1,1+AVOIDANCE_RANDOMIZATION)*vRight
       vLeft=2*SPEED-vRight
    else --Obstacle is to the right
       vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*SPEED/11
-      vLeft=robot.random.uniform(1,1+AVOIDANCE_RANDOMIZATION)*vLeft
       vRight=2*SPEED-vLeft
    end
+   local randomizer=robot.random.uniform(1-AVOIDANCE_RANDOMIZATION,1)
+   if randomizer<0.45 then
+      randomizer=0.5
+   elseif randomizer<0.55 then
+      randomizer=0.75
+   else
+      randomizer=1
+   end
+   vRight=randomizer*vRight
+   vLeft=randomizer*vLeft
    robot.wheels.set_velocity(vLeft, vRight)
 end
 
