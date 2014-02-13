@@ -1,6 +1,6 @@
 -- Put your global variables here
 BASE_SPEED=5
-MINIMUM_SPEED_COEFF = 0.4 --When a footbot "hits" something, he will pick a temporary speed between this coeff and one time BASE_SPEED
+MINIMUM_SPEED_COEFF = 0.5 --When a footbot "hits" something, he will pick a temporary speed between this coeff and one time BASE_SPEED
 RANDOM_SPEED_TIME = 7 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
@@ -49,40 +49,38 @@ function step()
       return
    end
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
-   travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY)
+   travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
    speed, lastHit = move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
    if batt_rest<=0 then
       log(robot.id, ": battery empty")
    end
 end
 
-function checkGoalReached(posX, posY, goalX, goalY)
-   if floorIsBlack() then
-      goalX, goalY, travels=travelEndHandler(travels)
+function checkGoalReached(posX, posY, goalX, goalY, travels)
+   if floorIsBlack() and travels%2==1 and math.sqrt((posX)^2+(posY)^2)>=90 then
+      travels=travels+1
+      goalX=0
+      goalY=0
+      log(robot.id, ": travels done so far: ", travels)
+      log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
+   elseif floorIsBlack() and travels%2==0 and math.sqrt((posX)^2+(posY)^2)<=70 then
+      travels=travels+1
+      batt_rest=100
+      goalX=RESSOURCEX
+      goalY=RESSOURCEY
+      log(robot.id, ": travels done so far: ", travels)
+      log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
    end
    return travels, goalX, goalY
 end
 
 function floorIsBlack()
    for i=1,12 do
-      if robot.base_ground[i].value)==1 then
+      if robot.base_ground[i].value==1 then
          return false
+      end
    return true
-end
-
-function travelEndHandler(travels)
-   travels=travels+1
-   if travels%2==0 then
-      batt_rest=100
-      goalX=RESSOURCEX
-      goalY=RESSOURCEY
-   else
-      goalX=0
-      goalY=0
    end
-   log(robot.id, ": travels done so far: ", travels)
-   log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
-   return goalX, goalY, travels
 end
 
 function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
