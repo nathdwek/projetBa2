@@ -1,11 +1,13 @@
 -- Put your global variables here
-SPEED=5
+BASE_SPEED=5
+MINIMUM_SPEED_COEFF = 0.6
+RANDOM_LOWER_SPEED_TIME = 7
 PI=math.pi
 CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
 OBSTACLE_PROXIMITY_DEPENDANCE=1
-AVOIDANCE_RANDOMIZATION=0.8
+MAX_STEPS_BEFORE_LEAVING=150
 XMIN=-400
 XMAX=400
 YMIN=-400
@@ -20,6 +22,8 @@ RESSOURCEY=350
 
 --This function is executed every time you press the 'execute' button
 function init()
+   speed=BASE_SPEED
+   steps_before_leaving=robot.random.uniform(0,MAX_STEPS_BEFORE_LEAVING)
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
@@ -28,8 +32,9 @@ function init()
    log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
-   steps=0
+   currentStep=0
    batt_rest=100
+   lastHit=0
 end
 
 
@@ -39,10 +44,13 @@ end
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
    batt_rest = batt_rest - BATT_BY_STEP
-   posX, posY, alpha, steps=odometry(posX, posY, alpha, steps)
+   posX, posY, alpha, currentStep=odometry(posX, posY, alpha, currentStep)
+   if currentStep<steps_before_leaving then
+      return
+   end
    local obstacleProximity, obstacleDirection=closestObstacleDirection()
    travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY)
-   move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
+   speed, lastHit = move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
    if batt_rest<=0 then
       log(robot.id, ": battery empty")
    end
@@ -70,20 +78,30 @@ function travelEndHandler(travels)
    return goalX, goalY, travels
 end
 
-function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY)
+function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
    if obstacleProximity==0 then
-      getToGoal(posX, posY, alpha, goalX, goalY)
+      getToGoal(posX, posY, alpha, goalX, goalY, speed)
    else
-      obstacleAvoidance(obstacleProximity, obstacleDirection)
+      speed, lastHit = newRandomSpeed(speed, lastHit)
+      obstacleAvoidance(obstacleProximity, obstacleDirection, speed)
    end
+   return speed, lastHit
 end
 
-function odometry(x, y, angle, steps)
+function newRandomSpeed(speed, lastHit)
+   if currentStep-lastHit > RANDOM_LOWER_SPEED_TIME then
+      speed=robot.random.uniform(MINIMUM_SPEED_COEFF,1)*BASE_SPEED
+   end
+   lastHit=currentStep
+   return speed, lastHit
+end
+
+function odometry(x, y, angle, currentStep)
    local deltaL=robot.wheels.distance_left
    local deltaR=robot.wheels.distance_right
    local deltaG=(deltaL+deltaR)/2
    local deltaAngle=(deltaR-deltaL)/AXIS_LENGTH
-   if math.abs(deltaG-SPEED/10)>1E-7 then
+   if math.abs(deltaG-speed/10)>1E-7 then
       log(robot.id, ": problem: deltaG is: ", deltaG)
    end
    x=x+deltaG*math.cos(angle)
@@ -92,7 +110,7 @@ function odometry(x, y, angle, steps)
    if angle>2*PI then
       angle=angle-2*PI
    end
-   return x,y,angle, steps+1
+   return x,y,angle, currentStep+1
 end
 
 function closestObstacleDirection()
@@ -111,7 +129,7 @@ function getToGoal(posX, posY, alpha, goalX, goalY)
    goalDirection=findGoalDirection(posX, posY, goalX, goalY)
    goalAngle=findGoalAngle(goalDirection, alpha)
    local coeff=goalAngle/PI
-   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*SPEED, (1+CONVERGENCE*coeff)*SPEED )
+   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*speed, (1+CONVERGENCE*coeff)*speed )
 end
 
 function findGoalDirection(posX, posY, goalX, goalY)
@@ -141,22 +159,12 @@ function obstacleAvoidance(obstacleProximity,obstacleDirection)
       logerr(robot.id, ": Odometry data might be offset")
    end
    if obstacleDirection <= 12 then --Obstacle is to the left
-      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
-      vLeft=2*SPEED-vRight
+      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*speed/11
+      vLeft=2*speed-vRight
    else --Obstacle is to the right
-      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*SPEED/11
-      vRight=2*SPEED-vLeft
+      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*speed/11
+      vRight=2*speed-vLeft
    end
-   local randomizer=robot.random.uniform(1-AVOIDANCE_RANDOMIZATION,1)
-   if randomizer<0.45 then
-      randomizer=0.5
-   elseif randomizer<0.55 then
-      randomizer=0.75
-   else
-      randomizer=1
-   end
-   vRight=randomizer*vRight
-   vLeft=randomizer*vLeft
    robot.wheels.set_velocity(vLeft, vRight)
 end
 
@@ -167,15 +175,19 @@ end
    automatically by ARGoS.
 ]]
 function reset()
+   speed=BASE_SPEED
+   steps_before_leaving=robot.random.uniform(0,MAX_STEPS_BEFORE_LEAVING)
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
    goalX=RESSOURCEX
    goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
+   AXIS_LENGTH=robot.wheels.axis_length
    travels=0
-   steps=0
+   currentStep=0
    batt_rest=100
+   lastHit=0
 end
 
 
