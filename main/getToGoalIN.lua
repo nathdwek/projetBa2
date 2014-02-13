@@ -1,13 +1,13 @@
 -- Put your global variables here
 BASE_SPEED=5
-MINIMUM_SPEED_COEFF = 0.6
-RANDOM_LOWER_SPEED_TIME = 7
+MINIMUM_SPEED_COEFF = 0.4 --When a footbot "hits" something, he will pick a temporary speed between this coeff and one time BASE_SPEED
+RANDOM_SPEED_TIME = 7 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
-OBSTACLE_PROXIMITY_DEPENDANCE=1
-MAX_STEPS_BEFORE_LEAVING=150
+OBSTACLE_PROXIMITY_DEPENDANCE=2
+MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 XMIN=-400
 XMAX=400
 YMIN=-400
@@ -89,7 +89,7 @@ function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, go
 end
 
 function newRandomSpeed(speed, lastHit)
-   if currentStep-lastHit > RANDOM_LOWER_SPEED_TIME then
+   if currentStep-lastHit > RANDOM_SPEED_TIME then
       speed=robot.random.uniform(MINIMUM_SPEED_COEFF,1)*BASE_SPEED
    end
    lastHit=currentStep
