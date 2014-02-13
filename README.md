@@ -1,3 +1,3 @@
-Ceci est un dépôt git, probablement temporaire pour notre Projet d'Année "Swarm Robotics".
-
-##***VERSION DES FICHIERS .argos: ARGOS3 BETA20***
+#Swarm Robotics
+##***ARGOS3.0.0-BETA22***
+*ULB 2013 - 2014*
