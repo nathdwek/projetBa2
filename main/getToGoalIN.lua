@@ -96,19 +96,9 @@ function newRandomSpeed(speed, lastHit)
 end
 
 function odometry(x, y, angle, currentStep)
-   local deltaL=robot.wheels.distance_left
-   local deltaR=robot.wheels.distance_right
-   local deltaG=(deltaL+deltaR)/2
-   local deltaAngle=(deltaR-deltaL)/AXIS_LENGTH
-   if math.abs(deltaG-speed/10)>1E-7 then
-      log(robot.id, ": problem: deltaG is: ", deltaG)
-   end
-   x=x+deltaG*math.cos(angle)
-   y=y+deltaG*math.sin(angle)
-   angle=angle+deltaAngle
-   if angle>2*PI then
-      angle=angle-2*PI
-   end
+   x=100*robot.positioning.position.x
+   y=100*robot.positioning.position.y
+   angle=robot.positioning.orientation.axis.z*robot.positioning.orientation.angle
    return x,y,angle, currentStep+1
 end
 
@@ -154,9 +144,6 @@ end
 
 function obstacleAvoidance(obstacleProximity,obstacleDirection)
    local vLeft, vRight
-   if obstacleProximity==1 then
-      logerr(robot.id, ": Odometry data might be offset")
-   end
    if obstacleDirection <= 12 then --Obstacle is to the left
       vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*speed/11
       vLeft=2*speed-vRight

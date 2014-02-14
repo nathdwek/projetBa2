@@ -32,6 +32,7 @@
             <footbot_base_ground implementation="rot_z_only" />
             <range_and_bearing implementation="medium" medium="rab" />
             <differential_steering implementation="default" />
+            <positioning implementation="default" />
          </sensors>
          <!-- No required configuration -->
          <!-- Optionally, you can pass a script as a controller parameter: -->
