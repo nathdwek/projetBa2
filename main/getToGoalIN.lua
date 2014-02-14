@@ -8,12 +8,6 @@ AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 1
 --maximum and minimum value for both are subject to discussion.
 OBSTACLE_PROXIMITY_DEPENDANCE=2
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
-XMIN=-400
-XMAX=400
-YMIN=-400
-YMAX=400
-TOLERANCE=50
-TRAVELS_MAX=10
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
 RESSOURCEY=350
