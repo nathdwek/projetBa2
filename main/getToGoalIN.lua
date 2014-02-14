@@ -29,6 +29,8 @@ function init()
    currentStep=0
    batt_rest=100
    lastHit=0
+   robot.distance_scanner.enable()
+   robot.distance_scanner.set_rpm(60)
 end
 
 
