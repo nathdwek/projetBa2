@@ -1,7 +1,7 @@
 -- Put your global variables here
 BASE_SPEED=5
-MINIMUM_SPEED_COEFF = 0.5 --When a footbot "hits" something, he will pick a temporary speed between this coeff and one time BASE_SPEED
-RANDOM_SPEED_TIME = 7 --The number of steps during which the footbot keeps this new random speed
+SYM_SPEED_COEFF = 0.4 --When a footbot "hits" something, he will pick a temporary speed between 1+this coeff and 1-this coeff time BASE_SPEED
+RANDOM_SPEED_TIME = 5 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 AVOIDANCE=0.1 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
@@ -76,13 +76,13 @@ function updateObstaclesTable(obstaclesTable)
 end
 
 function checkGoalReached(posX, posY, goalX, goalY, travels)
-   if floorIsBlack() and travels%2==1 and math.sqrt((posX)^2+(posY)^2)>=90 then
+   if floorIsBlack() and travels%2==0 and math.sqrt((posX)^2+(posY)^2)>=90 then
       travels=travels+1
       goalX=0
       goalY=0
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
-   elseif floorIsBlack() and travels%2==0 and math.sqrt((posX)^2+(posY)^2)<=70 then
+   elseif floorIsBlack() and travels%2==1 and math.sqrt((posX)^2+(posY)^2)<=70 then
       travels=travels+1
       batt_rest=100
       goalX=RESSOURCEX
@@ -114,7 +114,7 @@ end
 
 function newRandomSpeed(speed, lastHit)
    if currentStep-lastHit > RANDOM_SPEED_TIME then
-      speed=robot.random.uniform(MINIMUM_SPEED_COEFF,1)*BASE_SPEED
+      speed=robot.random.uniform(1-SYM_SPEED_COEFF,1+SYM_SPEED_COEFF)*BASE_SPEED
    end
    lastHit=currentStep
    return speed, lastHit
@@ -137,6 +137,9 @@ function closestObstacleDirection(obstaclesTable)
    end
    if obstacleProximity==30 then
       obstacleDirection=-1
+   end
+   if obstacleDirection<0 then
+      obstacleDirection = obstacleDirection+2*PI
    end
    return 1-obstacleProximity/30, 12*obstacleDirection/PI
 end
