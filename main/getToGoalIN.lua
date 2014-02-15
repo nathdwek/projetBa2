@@ -12,6 +12,8 @@ BATT_BY_STEP = 0.01
 RESSOURCEX=400
 RESSOURCEY=350
 SCANNER_RPM=150
+TAIL = 2*PI/3 --obstacles located between TAIL and -TAIL are considered in the tail area and thus ignored (since the robot is already going away from them)
+MIN_PROXIMITY = 50 --obstacles further than this are ignored
 
 
 
@@ -66,7 +68,7 @@ function updateObstaclesTable(obstaclesTable)
       log("hello")
       obstaclesTable={}
    end
-   for sensor, reading in pairs(robot.distance_scanner.short_range) do
+   for sensor, reading in pairs(robot.distance_scanner.long_range) do
       obstaclesTable[reading.angle] = reading.distance
    end
    return obstaclesTable
@@ -100,7 +102,7 @@ function floorIsBlack()
 end
 
 function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
-   if obstacleProximity==30 or abs(obstacleDirection)>2*PI/3 then
+   if obstacleProximity>MIN_PROXIMITY or abs(obstacleDirection)>TAIL then
       getToGoal(posX, posY, alpha, goalX, goalY, speed)
    else
       speed, lastHit = newRandomSpeed(speed, lastHit)
@@ -132,14 +134,14 @@ end
 
 function closestObstacleDirection(obstaclesTable)
    local obstacleDirection, obstacleProximity, angle, distance
-   obstacleProximity=30
+   obstacleProximity=150
    for angle, distance in pairs(obstaclesTable) do
       if (distance<obstacleProximity) and distance>-2 then
          obstacleDirection = angle
          obstacleProximity = distance
       end
    end
-   if obstacleProximity==30 then
+   if obstacleProximity==150 then
       obstacleDirection=-1
    end
    if obstacleProximity == -1 then
@@ -185,12 +187,12 @@ end
 function obstacleAvoidance(obstacleProximity,obstacleDirection)
    local vLeft, vRight
    if obstacleDirection >=0 then --Obstacle is to the left
-      vRight=speed*(obstacleDirection/(2*PI/3))^OBSTACLE_DIRECTION_DEPENDANCE
-      vRight=vRight*(obstacleProximity/30)^OBSTACLE_PROXIMITY_DEPENDANCE
+      vRight=speed*(obstacleDirection/TAIL)^OBSTACLE_DIRECTION_DEPENDANCE
+      vRight=vRight*(obstacleProximity/MIN_PROXIMITY)^OBSTACLE_PROXIMITY_DEPENDANCE
       vLeft=2*speed-vRight
    else --Obstacle is to the right
-      vLeft=speed*(abs(obstacleDirection)/(2*PI/3))^OBSTACLE_DIRECTION_DEPENDANCE
-      vLeft=vLeft*(obstacleProximity/30)^OBSTACLE_PROXIMITY_DEPENDANCE
+      vLeft=speed*(abs(obstacleDirection)/TAIL)^OBSTACLE_DIRECTION_DEPENDANCE
+      vLeft=vLeft*(obstacleProximity/MIN_PROXIMITY)^OBSTACLE_PROXIMITY_DEPENDANCE
       vRight=2*speed-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
