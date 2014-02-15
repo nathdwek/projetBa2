@@ -4,10 +4,10 @@ SYM_SPEED_COEFF = 0.3 --When a footbot "hits" something, he will pick a temporar
 RANDOM_SPEED_TIME = 5 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
-CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
+CONVERGENCE=1 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 --maximum and minimum value for both are subject to discussion.
 OBSTACLE_DIRECTION_DEPENDANCE=0.1
-OBSTACLE_PROXIMITY_DEPENDANCE=0.1
+OBSTACLE_PROXIMITY_DEPENDANCE=0.2
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
@@ -141,7 +141,7 @@ function closestObstacleDirection(obstaclesTable)
       obstacleDirection=-1
    end
    if obstacleProximity == -1 then
-      obstacleProximity = 1
+      obstacleProximity = 0
    end
    return obstacleProximity, obstacleDirection
 end
