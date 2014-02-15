@@ -1,12 +1,13 @@
 -- Put your global variables here
 BASE_SPEED=5
-SYM_SPEED_COEFF = 0.4 --When a footbot "hits" something, he will pick a temporary speed between 1+this coeff and 1-this coeff time BASE_SPEED
+SYM_SPEED_COEFF = 0.3 --When a footbot "hits" something, he will pick a temporary speed between 1+this coeff and 1-this coeff time BASE_SPEED
 RANDOM_SPEED_TIME = 5 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
-CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
-AVOIDANCE=0.1 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
+abs=math.abs
+CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
 --maximum and minimum value for both are subject to discussion.
-OBSTACLE_PROXIMITY_DEPENDANCE=0.01
+OBSTACLE_DIRECTION_DEPENDANCE=0.1
+OBSTACLE_PROXIMITY_DEPENDANCE=0.1
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
@@ -103,7 +104,7 @@ function floorIsBlack()
 end
 
 function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
-   if obstacleProximity==0 then
+   if obstacleProximity==30 or abs(obstacleDirection)>2*PI/3 then
       getToGoal(posX, posY, alpha, goalX, goalY, speed)
    else
       speed, lastHit = newRandomSpeed(speed, lastHit)
@@ -128,6 +129,7 @@ function odometry(x, y, angle, currentStep)
 end
 
 function closestObstacleDirection(obstaclesTable)
+   local obstacleDirection, obstacleProximity, angle, distance
    obstacleProximity=30
    for angle, distance in pairs(obstaclesTable) do
       if (distance<obstacleProximity) and distance>-2 then
@@ -138,10 +140,10 @@ function closestObstacleDirection(obstaclesTable)
    if obstacleProximity==30 then
       obstacleDirection=-1
    end
-   if obstacleDirection<0 then
-      obstacleDirection = obstacleDirection+2*PI
+   if obstacleProximity == -1 then
+      obstacleProximity = 1
    end
-   return 1-obstacleProximity/30, 12*obstacleDirection/PI
+   return obstacleProximity, obstacleDirection
 end
 
 function getToGoal(posX, posY, alpha, goalX, goalY)
@@ -174,11 +176,13 @@ end
 
 function obstacleAvoidance(obstacleProximity,obstacleDirection)
    local vLeft, vRight
-   if obstacleDirection <= 12 then --Obstacle is to the left
-      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*speed/11
+   if obstacleDirection >=0 then --Obstacle is to the left
+      vRight=speed*(obstacleDirection/(2*PI/3))^OBSTACLE_DIRECTION_DEPENDANCE
+      vRight=vRight*(obstacleProximity/30)^OBSTACLE_PROXIMITY_DEPENDANCE
       vLeft=2*speed-vRight
    else --Obstacle is to the right
-      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*speed/11
+      vLeft=speed*(abs(obstacleDirection)/(2*PI/3))^OBSTACLE_DIRECTION_DEPENDANCE
+      vLeft=vLeft*(obstacleProximity/30)^OBSTACLE_PROXIMITY_DEPENDANCE
       vRight=2*speed-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
