@@ -3,21 +3,33 @@ BASE_SPEED=5
 MINIMUM_SPEED_COEFF = 0.5 --When a footbot "hits" something, he will pick a temporary speed between this coeff and one time BASE_SPEED
 RANDOM_SPEED_TIME = 7 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
-CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
-AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
+CONVERGENCE=2 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
+AVOIDANCE=0.1 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
 --maximum and minimum value for both are subject to discussion.
-OBSTACLE_PROXIMITY_DEPENDANCE=2
+OBSTACLE_PROXIMITY_DEPENDANCE=0.01
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
 RESSOURCEY=350
+SCANNER_RPM=150
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 --This function is executed every time you press the 'execute' button
 function init()
    speed=BASE_SPEED
-   steps_before_leaving=robot.random.uniform(0,MAX_STEPS_BEFORE_LEAVING)
+   steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
@@ -30,7 +42,7 @@ function init()
    batt_rest=100
    lastHit=0
    robot.distance_scanner.enable()
-   robot.distance_scanner.set_rpm(60)
+   robot.distance_scanner.set_rpm(SCANNER_RPM)
 end
 
 
@@ -39,17 +51,28 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   batt_rest = batt_rest - BATT_BY_STEP
    posX, posY, alpha, currentStep=odometry(posX, posY, alpha, currentStep)
-   if currentStep<steps_before_leaving then
-      return
+   if currentStep>steps_before_leaving then
+      batt_rest = batt_rest - BATT_BY_STEP
+      obstaclesTable = updateObstaclesTable(obstaclesTable or -1)
+      local obstacleProximity, obstacleDirection=closestObstacleDirection(obstaclesTable)
+      travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
+      speed, lastHit = move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
+      if batt_rest<=0 then
+         log(robot.id, ": battery empty")
+      end
    end
-   local obstacleProximity, obstacleDirection=closestObstacleDirection()
-   travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
-   speed, lastHit = move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
-   if batt_rest<=0 then
-      log(robot.id, ": battery empty")
+end
+
+function updateObstaclesTable(obstaclesTable)
+   if obstaclesTable == -1 then
+      log("hello")
+      obstaclesTable={}
    end
+   for sensor, reading in pairs(robot.distance_scanner.short_range) do
+      obstaclesTable[reading.angle] = reading.distance
+   end
+   return obstaclesTable
 end
 
 function checkGoalReached(posX, posY, goalX, goalY, travels)
@@ -104,16 +127,18 @@ function odometry(x, y, angle, currentStep)
    return x,y,angle, currentStep+1
 end
 
-function closestObstacleDirection()
-   local obstacleDirection = 1
-   local obstacleProximity = robot.proximity[1].value
-   for i=2,24 do
-      if obstacleProximity < robot.proximity[i].value then
-         obstacleDirection = i
-         obstacleProximity = robot.proximity[i].value
+function closestObstacleDirection(obstaclesTable)
+   obstacleProximity=30
+   for angle, distance in pairs(obstaclesTable) do
+      if (distance<obstacleProximity) and distance>-2 then
+         obstacleDirection = angle
+         obstacleProximity = distance
       end
    end
-   return obstacleProximity, obstacleDirection
+   if obstacleProximity==30 then
+      obstacleDirection=-1
+   end
+   return 1-obstacleProximity/30, 12*obstacleDirection/PI
 end
 
 function getToGoal(posX, posY, alpha, goalX, goalY)
@@ -164,7 +189,7 @@ end
 ]]
 function reset()
    speed=BASE_SPEED
-   steps_before_leaving=robot.random.uniform(0,MAX_STEPS_BEFORE_LEAVING)
+   steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
    posX=STARTINGPOSITIONSTABLE[robot.id].posX
    posY=STARTINGPOSITIONSTABLE[robot.id].posY
    alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
@@ -176,6 +201,8 @@ function reset()
    currentStep=0
    batt_rest=100
    lastHit=0
+   robot.distance_scanner.enable()
+   robot.distance_scanner.set_rpm(SCANNER_RPM)
 end
 
 
