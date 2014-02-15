@@ -4,8 +4,7 @@ SYM_SPEED_COEFF = 0.3 --When a footbot "hits" something, he will pick a temporar
 RANDOM_SPEED_TIME = 5 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
-CONVERGENCE=1 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
---maximum and minimum value for both are subject to discussion.
+CONVERGENCE=0.8
 OBSTACLE_DIRECTION_DEPENDANCE=0.1
 OBSTACLE_PROXIMITY_DEPENDANCE=0.2
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
@@ -152,8 +151,14 @@ end
 function getToGoal(posX, posY, alpha, goalX, goalY)
    goalDirection=findGoalDirection(posX, posY, goalX, goalY)
    goalAngle=findGoalAngle(goalDirection, alpha)
-   local coeff=goalAngle/PI
-   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*speed, (1+CONVERGENCE*coeff)*speed )
+   if goalAngle>=0 then --goal is to the left
+      vLeft=speed*((PI-goalAngle)/PI)^CONVERGENCE
+      vRight = 2*speed-vLeft
+   else --goal is to the right
+      vRight=speed*((PI+goalAngle)/PI)^CONVERGENCE
+      vLeft = 2*speed - vRight
+   end
+   robot.wheels.set_velocity(vLeft, vRight)
 end
 
 function findGoalDirection(posX, posY, goalX, goalY)
@@ -169,7 +174,7 @@ function findGoalDirection(posX, posY, goalX, goalY)
    return goalDirection
 end
 
-function findGoalAngle(posX, posY, goalX, goalY)
+function findGoalAngle(goalDirection,alpha)
    local goalAngle=goalDirection-alpha
    if goalAngle>PI then
       goalAngle=goalAngle-2*PI
