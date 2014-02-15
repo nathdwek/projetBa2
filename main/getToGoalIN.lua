@@ -31,9 +31,6 @@ SCANNER_RPM=150
 function init()
    speed=BASE_SPEED
    steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
-   posX=STARTINGPOSITIONSTABLE[robot.id].posX
-   posY=STARTINGPOSITIONSTABLE[robot.id].posY
-   alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
    goalX=RESSOURCEX
    goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
@@ -52,7 +49,7 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   posX, posY, alpha, currentStep=odometry(posX, posY, alpha, currentStep)
+   posX, posY, alpha, currentStep=odometry(currentStep)
    if currentStep>steps_before_leaving then
       batt_rest = batt_rest - BATT_BY_STEP
       obstaclesTable = updateObstaclesTable(obstaclesTable or -1)
@@ -121,10 +118,16 @@ function newRandomSpeed(speed, lastHit)
    return speed, lastHit
 end
 
-function odometry(x, y, angle, currentStep)
-   x=100*robot.positioning.position.x
-   y=100*robot.positioning.position.y
-   angle=robot.positioning.orientation.axis.z*robot.positioning.orientation.angle
+function odometry(currentStep)
+   local x=100*robot.positioning.position.x
+   local y=100*robot.positioning.position.y
+   local angle=robot.positioning.orientation.axis.z*robot.positioning.orientation.angle
+   if angle >PI then
+      angle = angle - 2*PI
+   end
+   if angle < -PI then
+      angle = angle + 2*PI
+   end
    return x,y,angle, currentStep+1
 end
 
@@ -197,9 +200,6 @@ end
 function reset()
    speed=BASE_SPEED
    steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
-   posX=STARTINGPOSITIONSTABLE[robot.id].posX
-   posY=STARTINGPOSITIONSTABLE[robot.id].posY
-   alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
    goalX=RESSOURCEX
    goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
