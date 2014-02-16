@@ -98,11 +98,11 @@ def getLines(fileIn, fileType, fileOut):
    originalFile=open(fileIn+"."+fileType, "r")
    originalLines=originalFile.readlines()
    if fileType=="argos":
-      insertParamsScript(originalLines, fileOut)
+      insertParamsScript(originalLines, fileIn, fileOut)
    originalFile.close()
    return originalLines
 
-def insertParamsScript(originalLines, fileOut):
+def insertParamsScript(originalLines,fileIn,fileOut):
    """fonction qui insère la ligne argos permettant de charger automatiquement le comportement lua associé (pour les fichiers argos).
    Arguments:
       originalLines (list): Liste des lignes extraites du fichier original (contenant toutes les informations sauf celles concernant les positions et orientations de départ des robots)
@@ -112,7 +112,7 @@ def insertParamsScript(originalLines, fileOut):
    """
    for i in range(len(originalLines)):
       if "<!-- params script=" in originalLines[i]:
-         originalLines[i]='<params script="'+fileOut+'.lua"/>'
+         originalLines[i]='<params script="'+fileIn+'.lua"/>'
 
 def positionsInserter(newFile, startingPositionsDict, fileType):
    """Fonction qui s'occupe spécifiquement d'insérer les lignes contenant les informations sur les positions de départ des robots dans l'arène.
@@ -161,6 +161,5 @@ def toArgosOrientation(positionTup):
 
 if __name__=="__main__":
    startingPositionsDict=startingPositionsDictGenerator(robotsCount=int(argv[1])) #Génère des positions et orientations de départ aléatoirement
-   fileInserter(startingPositionsDict, argv[2], argv[3], "lua", 19) #écrit ces positions dans le comportement .lua
    fileInserter(startingPositionsDict, argv[2], argv[3], "argos", 63) #écrit ces positions dans la configuration d'arène .argos
 

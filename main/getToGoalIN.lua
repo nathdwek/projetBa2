@@ -1,26 +1,37 @@
 -- Put your global variables here
 BASE_SPEED=5
-MINIMUM_SPEED_COEFF = 0.5 --When a footbot "hits" something, he will pick a temporary speed between this coeff and one time BASE_SPEED
-RANDOM_SPEED_TIME = 7 --The number of steps during which the footbot keeps this new random speed
+SYM_SPEED_COEFF = 0.3 --When a footbot "hits" something, he will pick a temporary speed between 1+this coeff and 1-this coeff time BASE_SPEED
+RANDOM_SPEED_TIME = 5 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
-CONVERGENCE=0.7 --A number between 0 and 2 (0 means no convergence at all, 2 means strongest convergence possible)
-AVOIDANCE=2 --A number between 1 and 12 (1 means minimum sufficient avoidance, 12 means strongest avoidance)
---maximum and minimum value for both are subject to discussion.
-OBSTACLE_PROXIMITY_DEPENDANCE=2
+abs=math.abs
+CONVERGENCE=0.8
+OBSTACLE_DIRECTION_DEPENDANCE=0.1
+OBSTACLE_PROXIMITY_DEPENDANCE=0.2
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
 RESSOURCEY=350
+SCANNER_RPM=150
+TAIL = 2*PI/3 --obstacles located between TAIL and -TAIL are considered in the tail area and thus ignored (since the robot is already going away from them)
+MIN_PROXIMITY = 50 --obstacles further than this are ignored
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 --This function is executed every time you press the 'execute' button
 function init()
    speed=BASE_SPEED
-   steps_before_leaving=robot.random.uniform(0,MAX_STEPS_BEFORE_LEAVING)
-   posX=STARTINGPOSITIONSTABLE[robot.id].posX
-   posY=STARTINGPOSITIONSTABLE[robot.id].posY
-   alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
+   steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
    goalX=RESSOURCEX
    goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
@@ -29,6 +40,8 @@ function init()
    currentStep=0
    batt_rest=100
    lastHit=0
+   robot.distance_scanner.enable()
+   robot.distance_scanner.set_rpm(SCANNER_RPM)
 end
 
 
@@ -37,27 +50,38 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   batt_rest = batt_rest - BATT_BY_STEP
-   posX, posY, alpha, currentStep=odometry(posX, posY, alpha, currentStep)
-   if currentStep<steps_before_leaving then
-      return
-   end
-   local obstacleProximity, obstacleDirection=closestObstacleDirection()
-   travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
-   speed, lastHit = move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
-   if batt_rest<=0 then
-      log(robot.id, ": battery empty")
+   posX, posY, alpha, currentStep=odometry(currentStep)
+   if currentStep>steps_before_leaving then
+      batt_rest = batt_rest - BATT_BY_STEP
+      obstaclesTable = updateObstaclesTable(obstaclesTable or -1)
+      local obstacleProximity, obstacleDirection=closestObstacleDirection(obstaclesTable)
+      travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
+      speed, lastHit = move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
+      if batt_rest<=0 then
+         log(robot.id, ": battery empty")
+      end
    end
 end
 
+function updateObstaclesTable(obstaclesTable)
+   if obstaclesTable == -1 then
+      log("hello")
+      obstaclesTable={}
+   end
+   for sensor, reading in pairs(robot.distance_scanner.long_range) do
+      obstaclesTable[reading.angle] = reading.distance
+   end
+   return obstaclesTable
+end
+
 function checkGoalReached(posX, posY, goalX, goalY, travels)
-   if floorIsBlack() and travels%2==1 and math.sqrt((posX)^2+(posY)^2)>=90 then
+   if floorIsBlack() and travels%2==0 and math.sqrt((posX)^2+(posY)^2)>=90 then
       travels=travels+1
       goalX=0
       goalY=0
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
-   elseif floorIsBlack() and travels%2==0 and math.sqrt((posX)^2+(posY)^2)<=70 then
+   elseif floorIsBlack() and travels%2==1 and math.sqrt((posX)^2+(posY)^2)<=70 then
       travels=travels+1
       batt_rest=100
       goalX=RESSOURCEX
@@ -78,7 +102,7 @@ function floorIsBlack()
 end
 
 function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
-   if obstacleProximity==0 then
+   if obstacleProximity>MIN_PROXIMITY or abs(obstacleDirection)>TAIL then
       getToGoal(posX, posY, alpha, goalX, goalY, speed)
    else
       speed, lastHit = newRandomSpeed(speed, lastHit)
@@ -89,27 +113,39 @@ end
 
 function newRandomSpeed(speed, lastHit)
    if currentStep-lastHit > RANDOM_SPEED_TIME then
-      speed=robot.random.uniform(MINIMUM_SPEED_COEFF,1)*BASE_SPEED
+      speed=robot.random.uniform(1-SYM_SPEED_COEFF,1+SYM_SPEED_COEFF)*BASE_SPEED
    end
    lastHit=currentStep
    return speed, lastHit
 end
 
-function odometry(x, y, angle, currentStep)
-   x=100*robot.positioning.position.x
-   y=100*robot.positioning.position.y
-   angle=robot.positioning.orientation.axis.z*robot.positioning.orientation.angle
+function odometry(currentStep)
+   local x=100*robot.positioning.position.x
+   local y=100*robot.positioning.position.y
+   local angle=robot.positioning.orientation.axis.z*robot.positioning.orientation.angle
+   if angle >PI then
+      angle = angle - 2*PI
+   end
+   if angle < -PI then
+      angle = angle + 2*PI
+   end
    return x,y,angle, currentStep+1
 end
 
-function closestObstacleDirection()
-   local obstacleDirection = 1
-   local obstacleProximity = robot.proximity[1].value
-   for i=2,24 do
-      if obstacleProximity < robot.proximity[i].value then
-         obstacleDirection = i
-         obstacleProximity = robot.proximity[i].value
+function closestObstacleDirection(obstaclesTable)
+   local obstacleDirection, obstacleProximity, angle, distance
+   obstacleProximity=150
+   for angle, distance in pairs(obstaclesTable) do
+      if (distance<obstacleProximity) and distance>-2 then
+         obstacleDirection = angle
+         obstacleProximity = distance
       end
+   end
+   if obstacleProximity==150 then
+      obstacleDirection=-1
+   end
+   if obstacleProximity == -1 then
+      obstacleProximity = 0
    end
    return obstacleProximity, obstacleDirection
 end
@@ -117,8 +153,14 @@ end
 function getToGoal(posX, posY, alpha, goalX, goalY)
    goalDirection=findGoalDirection(posX, posY, goalX, goalY)
    goalAngle=findGoalAngle(goalDirection, alpha)
-   local coeff=goalAngle/PI
-   robot.wheels.set_velocity( (1-CONVERGENCE*coeff)*speed, (1+CONVERGENCE*coeff)*speed )
+   if goalAngle>=0 then --goal is to the left
+      vLeft=speed*((PI-goalAngle)/PI)^CONVERGENCE
+      vRight = 2*speed-vLeft
+   else --goal is to the right
+      vRight=speed*((PI+goalAngle)/PI)^CONVERGENCE
+      vLeft = 2*speed - vRight
+   end
+   robot.wheels.set_velocity(vLeft, vRight)
 end
 
 function findGoalDirection(posX, posY, goalX, goalY)
@@ -134,7 +176,7 @@ function findGoalDirection(posX, posY, goalX, goalY)
    return goalDirection
 end
 
-function findGoalAngle(posX, posY, goalX, goalY)
+function findGoalAngle(goalDirection,alpha)
    local goalAngle=goalDirection-alpha
    if goalAngle>PI then
       goalAngle=goalAngle-2*PI
@@ -144,11 +186,13 @@ end
 
 function obstacleAvoidance(obstacleProximity,obstacleDirection)
    local vLeft, vRight
-   if obstacleDirection <= 12 then --Obstacle is to the left
-      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*speed/11
+   if obstacleDirection >=0 then --Obstacle is to the left
+      vRight=speed*(obstacleDirection/TAIL)^OBSTACLE_DIRECTION_DEPENDANCE
+      vRight=vRight*(obstacleProximity/MIN_PROXIMITY)^OBSTACLE_PROXIMITY_DEPENDANCE
       vLeft=2*speed-vRight
    else --Obstacle is to the right
-      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*speed/11
+      vLeft=speed*(abs(obstacleDirection)/TAIL)^OBSTACLE_DIRECTION_DEPENDANCE
+      vLeft=vLeft*(obstacleProximity/MIN_PROXIMITY)^OBSTACLE_PROXIMITY_DEPENDANCE
       vRight=2*speed-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
@@ -162,10 +206,7 @@ end
 ]]
 function reset()
    speed=BASE_SPEED
-   steps_before_leaving=robot.random.uniform(0,MAX_STEPS_BEFORE_LEAVING)
-   posX=STARTINGPOSITIONSTABLE[robot.id].posX
-   posY=STARTINGPOSITIONSTABLE[robot.id].posY
-   alpha=STARTINGPOSITIONSTABLE[robot.id].alpha
+   steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
    goalX=RESSOURCEX
    goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
@@ -174,6 +215,8 @@ function reset()
    currentStep=0
    batt_rest=100
    lastHit=0
+   robot.distance_scanner.enable()
+   robot.distance_scanner.set_rpm(SCANNER_RPM)
 end
 
 
