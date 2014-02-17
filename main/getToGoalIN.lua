@@ -54,9 +54,9 @@ function step()
    if currentStep>steps_before_leaving then
       batt_rest = batt_rest - BATT_BY_STEP
       obstaclesTable = updateObstaclesTable(obstaclesTable or -1)
-      local obstacleProximity, obstacleDirection=closestObstacleDirection(obstaclesTable)
+      local freeToGo, bestDirection=findBestDirection(obstaclesTable)
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
-      speed, lastHit = move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
+      speed, lastHit = move(freeToGo, bestDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
       if batt_rest<=0 then
          log(robot.id, ": battery empty")
       end
@@ -64,11 +64,13 @@ function step()
 end
 
 function updateObstaclesTable(obstaclesTable)
+   local sensor, reading
    if obstaclesTable == -1 then
       log("hello")
       obstaclesTable={}
    end
    for sensor, reading in pairs(robot.distance_scanner.long_range) do
+      if reading == -2 then reading=151 end
       obstaclesTable[reading.angle] = reading.distance
    end
    return obstaclesTable
@@ -101,8 +103,8 @@ function floorIsBlack()
    end
 end
 
-function move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
-   if obstacleProximity>MIN_PROXIMITY or abs(obstacleDirection)>TAIL then
+function move(freeToGo, bestDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
+   if freeToGo then
       getToGoal(posX, posY, alpha, goalX, goalY, speed)
    else
       speed, lastHit = newRandomSpeed(speed, lastHit)
@@ -132,13 +134,18 @@ function odometry(currentStep)
    return x,y,angle, currentStep+1
 end
 
-function closestObstacleDirection(obstaclesTable)
-   local obstacleDirection, obstacleProximity, angle, distance
-   obstacleProximity=150
+function findBestDirection(obstaclesTable)
+   local angle, distance
+   local bestDirs = {}
+   local freeToGo = true
+   local bestProx=-1
    for angle, distance in pairs(obstaclesTable) do
-      if (distance<obstacleProximity) and distance>-2 then
-         obstacleDirection = angle
-         obstacleProximity = distance
+      if distance
+      if distance==bestProx then
+         bestDirs[#bestDirs+1]=angle
+      elseif distance>bestProx then
+         bestDirs={angle}
+         bestProx=distance
       end
    end
    if obstacleProximity==150 then
