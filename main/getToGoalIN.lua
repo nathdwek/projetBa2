@@ -1,31 +1,13 @@
 -- Put your global variables here
 BASE_SPEED=5
-SYM_SPEED_COEFF = 0.3 --When a footbot "hits" something, he will pick a temporary speed between 1+this coeff and 1-this coeff time BASE_SPEED
-RANDOM_SPEED_TIME = 5 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
-CONVERGENCE=0.8
-OBSTACLE_DIRECTION_DEPENDANCE=0.1
-OBSTACLE_PROXIMITY_DEPENDANCE=0.2
+CONVERGENCE=1.5
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
 RESSOURCEY=350
-SCANNER_RPM=150
-TAIL = 2*PI/3 --obstacles located between TAIL and -TAIL are considered in the tail area and thus ignored (since the robot is already going away from them)
-MIN_PROXIMITY = 50 --obstacles further than this are ignored
-
-
-
-
-
-
-
-
-
-
-
-
+SCANNER_RPM=75
 
 
 --This function is executed every time you press the 'execute' button
@@ -42,6 +24,10 @@ function init()
    lastHit=0
    robot.distance_scanner.enable()
    robot.distance_scanner.set_rpm(SCANNER_RPM)
+   obstaclesTable={}
+   for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
+      obstaclesTable[i]=151
+   end
 end
 
 
@@ -53,10 +39,9 @@ function step()
    posX, posY, alpha, currentStep=odometry(currentStep)
    if currentStep>steps_before_leaving then
       batt_rest = batt_rest - BATT_BY_STEP
-      obstaclesTable = updateObstaclesTable(obstaclesTable or -1)
-      local freeToGo, bestDirection=findBestDirection(obstaclesTable)
+      obstaclesTable = updateObstaclesTable(obstaclesTable)
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
-      speed, lastHit = move(freeToGo, bestDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
+      move(obstaclesTable, posX, posY, alpha, goalX, goalY)
       if batt_rest<=0 then
          log(robot.id, ": battery empty")
       end
@@ -64,14 +49,20 @@ function step()
 end
 
 function updateObstaclesTable(obstaclesTable)
-   local sensor, reading
-   if obstaclesTable == -1 then
-      log("hello")
-      obstaclesTable={}
-   end
-   for sensor, reading in pairs(robot.distance_scanner.long_range) do
-      if reading == -2 then reading=151 end
-      obstaclesTable[reading.angle] = reading.distance
+   local sensor, reading, angle, value, rAngle, rDistance
+   for angle, value in pairs(obstaclesTable) do
+      newValue=false
+      for sensor, reading in pairs(robot.distance_scanner.long_range) do
+         rAngle = reading.angle
+         rDistance=reading.distance
+         if rDistance == -2 then rDistance=151 end
+         if abs(angle-rAngle)<PI/DIR_NUMBER then
+            if value>rDistance or not newValue then
+               obstaclesTable[angle]=rDistance
+            end
+            newValue = true
+         end
+      end
    end
    return obstaclesTable
 end
@@ -103,22 +94,10 @@ function floorIsBlack()
    end
 end
 
-function move(freeToGo, bestDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
-   if freeToGo then
-      getToGoal(posX, posY, alpha, goalX, goalY, speed)
-   else
-      speed, lastHit = newRandomSpeed(speed, lastHit)
-      obstacleAvoidance(obstacleProximity, obstacleDirection, speed)
-   end
-   return speed, lastHit
-end
-
-function newRandomSpeed(speed, lastHit)
-   if currentStep-lastHit > RANDOM_SPEED_TIME then
-      speed=robot.random.uniform(1-SYM_SPEED_COEFF,1+SYM_SPEED_COEFF)*BASE_SPEED
-   end
-   lastHit=currentStep
-   return speed, lastHit
+function move(obstaclesTable, posX, posY, alpha, goalX, goalY)
+   local goalDirection=findGoalDirection(posX, posY, goalX, goalY)
+   local goalAngle=findGoalAngle(goalDirection, alpha)
+   obstacleAvoidance(goalAngle, obstaclesTable)
 end
 
 function odometry(currentStep)
@@ -134,32 +113,7 @@ function odometry(currentStep)
    return x,y,angle, currentStep+1
 end
 
-function findBestDirection(obstaclesTable)
-   local angle, distance
-   local bestDirs = {}
-   local freeToGo = true
-   local bestProx=-1
-   for angle, distance in pairs(obstaclesTable) do
-      if distance
-      if distance==bestProx then
-         bestDirs[#bestDirs+1]=angle
-      elseif distance>bestProx then
-         bestDirs={angle}
-         bestProx=distance
-      end
-   end
-   if obstacleProximity==150 then
-      obstacleDirection=-1
-   end
-   if obstacleProximity == -1 then
-      obstacleProximity = 0
-   end
-   return obstacleProximity, obstacleDirection
-end
-
-function getToGoal(posX, posY, alpha, goalX, goalY)
-   goalDirection=findGoalDirection(posX, posY, goalX, goalY)
-   goalAngle=findGoalAngle(goalDirection, alpha)
+function getToGoal(goalAngle)
    if goalAngle>=0 then --goal is to the left
       vLeft=speed*((PI-goalAngle)/PI)^CONVERGENCE
       vRight = 2*speed-vLeft
@@ -191,18 +145,16 @@ function findGoalAngle(goalDirection,alpha)
    return goalAngle
 end
 
-function obstacleAvoidance(obstacleProximity,obstacleDirection)
-   local vLeft, vRight
-   if obstacleDirection >=0 then --Obstacle is to the left
-      vRight=speed*(obstacleDirection/TAIL)^OBSTACLE_DIRECTION_DEPENDANCE
-      vRight=vRight*(obstacleProximity/MIN_PROXIMITY)^OBSTACLE_PROXIMITY_DEPENDANCE
-      vLeft=2*speed-vRight
-   else --Obstacle is to the right
-      vLeft=speed*(abs(obstacleDirection)/TAIL)^OBSTACLE_DIRECTION_DEPENDANCE
-      vLeft=vLeft*(obstacleProximity/MIN_PROXIMITY)^OBSTACLE_PROXIMITY_DEPENDANCE
-      vRight=2*speed-vLeft
+function obstacleAvoidance(goalAngle, obstaclesTable)
+   local bestAngle, bestDistance, angle, distance
+   bestDistance = -1
+   for angle, distance in pairs(obstaclesTable) do
+      if distance>bestDistance or (distance==bestDistance and not bestAngle) or (distance==bestDistance and abs(angle-goalAngle)<abs(bestAngle-goalAngle)) then
+         bestDistance = distance
+         bestAngle = angle
+      end
    end
-   robot.wheels.set_velocity(vLeft, vRight)
+   getToGoal(bestAngle)
 end
 
 --[[This function is executed every time you press the 'reset'
@@ -224,6 +176,10 @@ function reset()
    lastHit=0
    robot.distance_scanner.enable()
    robot.distance_scanner.set_rpm(SCANNER_RPM)
+   obstaclesTable={}
+   for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
+      obstaclesTable[i]=151
+   end
 end
 
 
