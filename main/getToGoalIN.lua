@@ -8,6 +8,7 @@ BATT_BY_STEP = 0.01
 RESSOURCEX=400
 RESSOURCEY=350
 SCANNER_RPM=75
+DIR_NUMBER = 5
 
 
 --This function is executed every time you press the 'execute' button
