@@ -1,8 +1,8 @@
 -- Put your global variables here
-SPEED=10
+SPEED=5
 PI=math.pi
 abs=math.abs
-CONVERGENCE=1.5
+CONVERGENCE=1
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
@@ -46,8 +46,11 @@ function step()
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
       move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection)
       if batt_rest<=0 then
-         log(robot.id, ": battery empty")
+         logerr(robot.id, ": battery empty")
       end
+   end
+   if currentStep%5000==0 then
+      log(travels)
    end
 end
 
