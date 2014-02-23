@@ -4,7 +4,7 @@ SYM_SPEED_COEFF = 0.3 --When a footbot "hits" something, he will pick a temporar
 RANDOM_SPEED_TIME = 5 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
-CONVERGENCE=0.8
+CONVERGENCE=1
 OBSTACLE_DIRECTION_DEPENDANCE=0.1
 OBSTACLE_PROXIMITY_DEPENDANCE=0.2
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
@@ -46,8 +46,11 @@ function step()
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
       speed, lastHit = move(obstacleProximity, obstacleDirection, posX, posY, alpha, goalX, goalY, speed, lastHit)
       if batt_rest<=0 then
-         log(robot.id, ": battery empty")
+         logerr(robot.id, ": battery empty")
       end
+   end
+   if currentStep%5000==0 then
+      log(travels)
    end
 end
 
