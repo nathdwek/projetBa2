@@ -16,18 +16,6 @@ TAIL = 2*PI/3 --obstacles located between TAIL and -TAIL are considered in the t
 MIN_PROXIMITY = 50 --obstacles further than this are ignored
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 --This function is executed every time you press the 'execute' button
 function init()
    speed=BASE_SPEED
