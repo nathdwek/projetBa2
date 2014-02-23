@@ -33,7 +33,7 @@
             <footbot_base_ground implementation="rot_z_only" />
             <range_and_bearing implementation="medium" medium="rab" />
             <differential_steering implementation="default" />
-            <footbot_distance_scanner implementation="rot_z_only"/>
+            <footbot_distance_scanner implementation="rot_z_only" show_rays="false"/>
             <positioning implementation="default" />
          </sensors>
          <!-- No required configuration -->
@@ -69,7 +69,7 @@
       <distribute>
          <position method="uniform" min="-5,-5,0" max="5,5,0" />
          <orientation method="uniform" min="0,0,0" max="360,0,0" />
-         <entity quantity="75" max_trials="100">
+         <entity quantity="75" max_trials="150">
             <cylinder id="o" radius="0.1" height="0.2" movable="false" />
          </entity>
       </distribute>
