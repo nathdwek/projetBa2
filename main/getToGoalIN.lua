@@ -1,19 +1,19 @@
 -- Put your global variables here
-BASE_SPEED=5
+SPEED=5
 PI=math.pi
 abs=math.abs
-CONVERGENCE=1.5
+CONVERGENCE=1
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
 RESSOURCEY=350
 SCANNER_RPM=75
-DIR_NUMBER = 5
-
+DIR_NUMBER = 7
+OBSTACLE_PROXIMITY_DEPENDANCE=1
+AVOIDANCE=2
 
 --This function is executed every time you press the 'execute' button
 function init()
-   speed=BASE_SPEED
    steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
    goalX=RESSOURCEX
    goalY=RESSOURCEY
@@ -37,15 +37,20 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
+   local obstacleProximity, obstacleProximity
    posX, posY, alpha, currentStep=odometry(currentStep)
    if currentStep>steps_before_leaving then
       batt_rest = batt_rest - BATT_BY_STEP
       obstaclesTable = updateObstaclesTable(obstaclesTable)
+      obstacleProximity, obstacleDirection=closestObstacleDirection()
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
-      move(obstaclesTable, posX, posY, alpha, goalX, goalY)
+      move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection)
       if batt_rest<=0 then
-         log(robot.id, ": battery empty")
+         logerr(robot.id, ": battery empty")
       end
+   end
+   if currentStep%5000==0 then
+      log(travels)
    end
 end
 
@@ -66,6 +71,18 @@ function updateObstaclesTable(obstaclesTable)
       end
    end
    return obstaclesTable
+end
+
+function closestObstacleDirection()
+   local obstacleDirection = 1
+   local obstacleProximity = robot.proximity[1].value
+   for i=2,24 do
+      if obstacleProximity < robot.proximity[i].value then
+         obstacleDirection = i
+         obstacleProximity = robot.proximity[i].value
+      end
+   end
+   return obstacleProximity, obstacleDirection
 end
 
 function checkGoalReached(posX, posY, goalX, goalY, travels)
@@ -95,10 +112,26 @@ function floorIsBlack()
    end
 end
 
-function move(obstaclesTable, posX, posY, alpha, goalX, goalY)
-   local goalDirection=findGoalDirection(posX, posY, goalX, goalY)
-   local goalAngle=findGoalAngle(goalDirection, alpha)
-   obstacleAvoidance(goalAngle, obstaclesTable)
+function move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection)
+   if obstacleProximity < 0.5 then
+      local goalDirection=findGoalDirection(posX, posY, goalX, goalY)
+      local goalAngle=findGoalAngle(goalDirection, alpha)
+      obstacleAvoidance(goalAngle, obstaclesTable)
+   else
+      closeObstacleAvoidance(obstacleProximity, obstacleDirection)
+   end
+end
+
+function closeObstacleAvoidance(obstacleProximity,obstacleDirection)
+   local vLeft, vRight
+   if obstacleDirection <= 12 then --Obstacle is to the left
+      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
+      vLeft=2*SPEED-vRight
+   else --Obstacle is to the right
+      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*SPEED/11
+      vRight=2*SPEED-vLeft
+   end
+   robot.wheels.set_velocity(vLeft, vRight)
 end
 
 function odometry(currentStep)
@@ -116,11 +149,11 @@ end
 
 function getToGoal(goalAngle)
    if goalAngle>=0 then --goal is to the left
-      vLeft=speed*((PI-goalAngle)/PI)^CONVERGENCE
-      vRight = 2*speed-vLeft
+      vLeft=SPEED*((PI-goalAngle)/PI)^CONVERGENCE
+      vRight = 2*SPEED-vLeft
    else --goal is to the right
-      vRight=speed*((PI+goalAngle)/PI)^CONVERGENCE
-      vLeft = 2*speed - vRight
+      vRight=SPEED*((PI+goalAngle)/PI)^CONVERGENCE
+      vLeft = 2*SPEED - vRight
    end
    robot.wheels.set_velocity(vLeft, vRight)
 end
@@ -165,7 +198,6 @@ end
    automatically by ARGoS.
 ]]
 function reset()
-   speed=BASE_SPEED
    steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
    goalX=RESSOURCEX
    goalY=RESSOURCEY
