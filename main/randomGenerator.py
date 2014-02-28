@@ -161,5 +161,5 @@ def toArgosOrientation(positionTup):
 
 if __name__=="__main__":
    startingPositionsDict=startingPositionsDictGenerator(robotsCount=int(argv[1])) #Génère des positions et orientations de départ aléatoirement
-   fileInserter(startingPositionsDict, argv[2], argv[3], "argos", 63) #écrit ces positions dans la configuration d'arène .argos
+   fileInserter(startingPositionsDict, argv[2], argv[3], "argos", 65) #écrit ces positions dans la configuration d'arène .argos
 
