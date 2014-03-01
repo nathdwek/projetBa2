@@ -30,8 +30,9 @@ def startingPositionsDictGenerator(rMax=50, thetaMax=2*pi, angleMax=2*pi, robots
    """
    startingPositionsDict={}
    for i in range(robotsCount):
-      x,y=placeARobot(startingPositionsDict, rMax, thetaMax, spacing)
-      startingPositionsDict[robotName+str(i)]=(x,y,uniform(0,angleMax))
+      placed,x,y=placeARobot(startingPositionsDict, rMax, thetaMax, spacing)
+      if placed:
+         startingPositionsDict[robotName+str(i)]=(x,y,uniform(0,angleMax))
    return startingPositionsDict
 
 def placeARobot(startingPositionsDict, rMax, thetaMax, spacing):
@@ -44,13 +45,15 @@ def placeARobot(startingPositionsDict, rMax, thetaMax, spacing):
       floats: renvoie une coordonnée x et une coordonnée y de départ d'un robot, générée aléatoirement, et n'impliquant pas de conflit entre robots.
    """
    collisions=True
-   while collisions:
+   n=0
+   while collisions and n<=100:
       r=uniform(0,rMax)
       theta=uniform(0, thetaMax)
       x=r*cos(theta)
       y=r*sin(theta)
       collisions=collisionsChecker(x,y,startingPositionsDict, spacing)
-   return x,y
+      n=n+1
+   return (not collisions),x,y
 
 def collisionsChecker(x,y,startingPositionsDict, spacing):
    """fonction qui vérifie si une position de départ d'un robot tirée aléatoirement n'entre pas en conflit avec les robots déjà placés dans l'arène.

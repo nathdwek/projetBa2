@@ -1,14 +1,12 @@
 -- Put your global variables here
-BASE_SPEED=20
+BASE_SPEED=30
 MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
 RANDOM_SPEED_TIME = 30 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
-CONVERGENCE=1.4
+CONVERGENCE=0.7
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
-BATT_BY_STEP = 0.01
-RESSOURCEX=400
-RESSOURCEY=350
+BATT_BY_STEP = 0.2
 SCANNER_RPM=75
 DIR_NUMBER = 15
 OBSTACLE_PROXIMITY_DEPENDANCE=1
@@ -19,8 +17,6 @@ AVOIDANCE=2
 function init()
    speed=BASE_SPEED
    steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
-   goalX=RESSOURCEX
-   goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
@@ -54,15 +50,15 @@ function step()
    if currentStep%5000==0 then
       log(travels)
    end
+   batt_rest = batt_rest - BATT_BY_STEP
    if batt_rest<=0 then
-      logerr(robot.id, ": battery empty")
+      BASE_SPEED=0
    end
 end
 
 function doMine(posX,posY,alpha,currentStep)
    local obstacleProximity, obstacleDirection
    if currentStep>steps_before_leaving then
-      batt_rest = batt_rest - BATT_BY_STEP
       obstaclesTable = updateObstaclesTable(obstaclesTable)
       obstacleProximity, obstacleDirection=closestObstacleDirection()
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
@@ -71,8 +67,27 @@ function doMine(posX,posY,alpha,currentStep)
 end
 
 function doExplore(posX,posY,alpha,currentStep)
+   if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)>=90 then
+      RESSOURCEX=posX
+      RESSOURCEY=posY
+      explore=false
+      goalX=0
+      goalY=0
+   end
+   if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)<=70 then
+      batt_rest=100
+   end
    local obstacleProximity, obstacleDirection
    obstacleProximity, obstacleDirection=closestObstacleDirection()
+   if batt_rest-5*math.sqrt(posX^2+posY^2)/BASE_SPEED<=10 then
+      obstaclesTable = updateObstaclesTable(obstaclesTable)
+      speed, lastHit = move(obstaclesTable, posX, posY, alpha, 0, 0, obstacleProximity, obstacleDirection, lastHit)
+   else
+      gasLike(obstacleProximity, obstacleDirection, alpha)
+   end
+end
+
+function gasLike(obstacleProximity, obstacleDirection, alpha)
    if obstacleProximity > 0 and not(obstacleDirection>6 and obstacleDirection<18) and not wasHit then
       wasHit = true
       newAngle = rebound(alpha,obstacleDirection)
@@ -81,7 +96,7 @@ function doExplore(posX,posY,alpha,currentStep)
       if newDirection >PI then newDirection = newDirection-2*PI end
    end
    if wasHit then
-      if abs(alpha-newDirection)<0.1 then
+      if abs(alpha-newDirection)<0.3 then
          robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
          wasHit=false
       else
@@ -92,9 +107,9 @@ end
 
 function rebound(alpha, obstacleDirection)
    if obstacleDirection<=12 then --obstacle is to the left
-      newAngle = -2*(PI/2-PI*obstacleDirection/12)
+      newAngle = -2*(PI/2-PI*(obstacleDirection-0.5)/12)
    else
-      newAngle = 2*(PI/2-PI*(24-obstacleDirection)/12)
+      newAngle = 2*(PI/2-PI*(24.5-obstacleDirection)/12)
    end
    if newAngle>PI then newAngle = newAngle-2*PI end
    if newAngle<-PI then newAngle = newAngle+2*PI end
