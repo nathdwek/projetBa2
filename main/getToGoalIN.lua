@@ -1,5 +1,7 @@
 -- Put your global variables here
-SPEED=20
+BASE_SPEED=20
+MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
+RANDOM_SPEED_TIME = 30 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
 CONVERGENCE=1.4
@@ -15,6 +17,7 @@ AVOIDANCE=2
 
 --This function is executed every time you press the 'execute' button
 function init()
+   speed=BASE_SPEED
    steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
    goalX=RESSOURCEX
    goalY=RESSOURCEY
@@ -32,7 +35,7 @@ function init()
    end
    explore=true
    if explore then
-      robot.wheels.set_velocity(SPEED,SPEED)
+      robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
    end
 end
 
@@ -63,7 +66,7 @@ function doMine(posX,posY,alpha,currentStep)
       obstaclesTable = updateObstaclesTable(obstaclesTable)
       obstacleProximity, obstacleDirection=closestObstacleDirection()
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
-      move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection)
+      speed, lastHit = move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
    end
 end
 
@@ -79,7 +82,7 @@ function doExplore(posX,posY,alpha,currentStep)
    end
    if wasHit then
       if abs(alpha-newDirection)<0.1 then
-         robot.wheels.set_velocity(SPEED, SPEED)
+         robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
          wasHit=false
       else
          getToGoal(newAngle)
@@ -156,24 +159,37 @@ function floorIsBlack()
    end
 end
 
-function move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection)
-   if obstacleProximity < 0.5 then
+function move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
+   if obstacleProximity == 0 then
+      if not lastHit or currentStep-lastHit < RANDOM_SPEED_TIME then
+         speed=BASE_SPEED
+      end
       local goalDirection=findGoalDirection(posX, posY, goalX, goalY)
       local goalAngle=findGoalAngle(goalDirection, alpha)
       obstacleAvoidance(goalAngle, obstaclesTable)
    else
+      speed, lastHit = newRandomSpeed(BASE_SPEED, lastHit)
       closeObstacleAvoidance(obstacleProximity, obstacleDirection)
    end
+   return speed, lastHit
+end
+
+function newRandomSpeed(lastHit)
+   if not lastHit or currentStep-RANDOM_SPEED_TIME > lastHit then
+      speed=robot.random.uniform(MIN_SPEED_COEFF,1)*BASE_SPEED
+   end
+   lastHit=currentStep
+   return speed, lastHit
 end
 
 function closeObstacleAvoidance(obstacleProximity,obstacleDirection)
    local vLeft, vRight
    if obstacleDirection <= 12 then --Obstacle is to the left
-      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*SPEED/11
-      vLeft=2*SPEED-vRight
+      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*speed/11
+      vLeft=2*speed-vRight
    else --Obstacle is to the right
-      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*SPEED/11
-      vRight=2*SPEED-vLeft
+      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*speed/11
+      vRight=2*speed-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
 end
@@ -193,11 +209,11 @@ end
 
 function getToGoal(goalAngle)
    if goalAngle>=0 then --goal is to the left
-      vLeft=SPEED*((PI-goalAngle)/PI)^CONVERGENCE
-      vRight = 2*SPEED-vLeft
+      vLeft=speed*((PI-goalAngle)/PI)^CONVERGENCE
+      vRight = 2*speed-vLeft
    else --goal is to the right
-      vRight=SPEED*((PI+goalAngle)/PI)^CONVERGENCE
-      vLeft = 2*SPEED - vRight
+      vRight=speed*((PI+goalAngle)/PI)^CONVERGENCE
+      vLeft = 2*speed - vRight
    end
    robot.wheels.set_velocity(vLeft, vRight)
 end
@@ -242,6 +258,7 @@ end
    automatically by ARGoS.
 ]]
 function reset()
+   speed=BASE_SPEED
    steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
    goalX=RESSOURCEX
    goalY=RESSOURCEY
@@ -258,7 +275,7 @@ function reset()
       obstaclesTable[i]=151
    end
    if explore then
-      robot.wheels.set_velocity(SPEED,SPEED)
+      robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
       wasHit=false
    end
 end
