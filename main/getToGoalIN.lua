@@ -1,14 +1,14 @@
 -- Put your global variables here
-SPEED=5
+SPEED=20
 PI=math.pi
 abs=math.abs
-CONVERGENCE=1.3
+CONVERGENCE=1.4
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
 BATT_BY_STEP = 0.01
 RESSOURCEX=400
 RESSOURCEY=350
 SCANNER_RPM=75
-DIR_NUMBER = 19
+DIR_NUMBER = 15
 OBSTACLE_PROXIMITY_DEPENDANCE=1
 AVOIDANCE=2
 
@@ -30,6 +30,10 @@ function init()
    for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
       obstaclesTable[i]=151
    end
+   explore=true
+   if explore then
+      robot.wheels.set_velocity(SPEED,SPEED)
+   end
 end
 
 
@@ -38,21 +42,60 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   local obstacleProximity, obstacleDirection
    posX, posY, alpha, currentStep=odometry(currentStep)
+   if explore then
+      doExplore(posX,posY,alpha,currentStep)
+   else
+      doMine(posX,posY,alpha,currentStep)
+   end
+   if currentStep%5000==0 then
+      log(travels)
+   end
+   if batt_rest<=0 then
+      logerr(robot.id, ": battery empty")
+   end
+end
+
+function doMine(posX,posY,alpha,currentStep)
+   local obstacleProximity, obstacleDirection
    if currentStep>steps_before_leaving then
       batt_rest = batt_rest - BATT_BY_STEP
       obstaclesTable = updateObstaclesTable(obstaclesTable)
       obstacleProximity, obstacleDirection=closestObstacleDirection()
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
       move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection)
-      if batt_rest<=0 then
-         logerr(robot.id, ": battery empty")
+   end
+end
+
+function doExplore(posX,posY,alpha,currentStep)
+   local obstacleProximity, obstacleDirection
+   obstacleProximity, obstacleDirection=closestObstacleDirection()
+   if obstacleProximity > 0 and not(obstacleDirection>6 and obstacleDirection<18) and not wasHit then
+      wasHit = true
+      newAngle = rebound(alpha,obstacleDirection)
+      newDirection = alpha+newAngle
+      if newDirection<-PI then newDirection = newDirection+2*PI end
+      if newDirection >PI then newDirection = newDirection-2*PI end
+   end
+   if wasHit then
+      if abs(alpha-newDirection)<0.1 then
+         robot.wheels.set_velocity(SPEED, SPEED)
+         wasHit=false
+      else
+         getToGoal(newAngle)
       end
    end
-   if currentStep%5000==0 then
-      log(travels)
+end
+
+function rebound(alpha, obstacleDirection)
+   if obstacleDirection<=12 then --obstacle is to the left
+      newAngle = -2*(PI/2-PI*obstacleDirection/12)
+   else
+      newAngle = 2*(PI/2-PI*(24-obstacleDirection)/12)
    end
+   if newAngle>PI then newAngle = newAngle-2*PI end
+   if newAngle<-PI then newAngle = newAngle+2*PI end
+   return newAngle
 end
 
 function updateObstaclesTable(obstaclesTable)
@@ -213,6 +256,10 @@ function reset()
    obstaclesTable={}
    for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
       obstaclesTable[i]=151
+   end
+   if explore then
+      robot.wheels.set_velocity(SPEED,SPEED)
+      wasHit=false
    end
 end
 
