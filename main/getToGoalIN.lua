@@ -12,13 +12,14 @@ DIR_NUMBER = 15
 EXPL_DIR_NUMBER = 24
 OBSTACLE_PROXIMITY_DEPENDANCE=1
 AVOIDANCE=2
+RESSOURCEX=400
+RESSOURCEY=350
 
 
 --This function is executed every time you press the 'execute' button
 function init()
    speed=BASE_SPEED
    steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
-   log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
    currentStep=0
@@ -38,6 +39,8 @@ function init()
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
    end
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
 end
 
 
@@ -56,8 +59,9 @@ function step()
       log(travels)
    end
    batt_rest = batt_rest - BATT_BY_STEP
-   if batt_rest<=0 then
+   if batt_rest==0 then
       BASE_SPEED=0
+      logerr("batt empty")
    end
 end
 
@@ -186,7 +190,7 @@ function floorIsBlack()
 end
 
 function move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
-   if obstacleProximity >= 30 then
+   if obstacleProximity >= 5 then
       if not lastHit or currentStep-lastHit < RANDOM_SPEED_TIME then
          speed=BASE_SPEED
       end
@@ -308,6 +312,9 @@ function reset()
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
       wasHit=false
    end
+   BASE_SPEED=30
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
 end
 
 
