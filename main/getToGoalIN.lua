@@ -9,6 +9,7 @@ MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will r
 BATT_BY_STEP = 0.2
 SCANNER_RPM=75
 DIR_NUMBER = 15
+EXPL_DIR_NUMBER = 24
 OBSTACLE_PROXIMITY_DEPENDANCE=1
 AVOIDANCE=2
 
@@ -28,6 +29,10 @@ function init()
    obstaclesTable={}
    for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
       obstaclesTable[i]=151
+   end
+   shortObstaclesTable={}
+   for i=-PI+PI/EXPL_DIR_NUMBER, PI-PI/EXPL_DIR_NUMBER, 2*PI/EXPL_DIR_NUMBER do
+      shortObstaclesTable[i]=151
    end
    explore=true
    if explore then
@@ -59,8 +64,9 @@ end
 function doMine(posX,posY,alpha,currentStep)
    local obstacleProximity, obstacleDirection
    if currentStep>steps_before_leaving then
-      obstaclesTable = updateObstaclesTable(obstaclesTable)
-      obstacleProximity, obstacleDirection=closestObstacleDirection()
+      obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
+      shortObstaclesTable = updateObstaclesTable("short_range",shortObstaclesTable)
+      obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
       speed, lastHit = move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
    end
@@ -78,9 +84,10 @@ function doExplore(posX,posY,alpha,currentStep)
       batt_rest=100
    end
    local obstacleProximity, obstacleDirection
-   obstacleProximity, obstacleDirection=closestObstacleDirection()
-   if batt_rest-5*math.sqrt(posX^2+posY^2)/BASE_SPEED<=10 then
-      obstaclesTable = updateObstaclesTable(obstaclesTable)
+   shortObstaclesTable = updateObstaclesTable("short_range", shortObstaclesTable)
+   obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
+   if batt_rest-5*math.sqrt(posX^2+posY^2)/BASE_SPEED<=10 then --values to discuss
+      obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
       speed, lastHit = move(obstaclesTable, posX, posY, alpha, 0, 0, obstacleProximity, obstacleDirection, lastHit)
    else
       gasLike(obstacleProximity, obstacleDirection, alpha)
@@ -88,10 +95,10 @@ function doExplore(posX,posY,alpha,currentStep)
 end
 
 function gasLike(obstacleProximity, obstacleDirection, alpha)
-   if obstacleProximity > 0 and not(obstacleDirection>6 and obstacleDirection<18) and not wasHit then
+   local goalAngle
+   if obstacleProximity < 20 and not(obstacleDirection<-PI/2 or obstacleDirection>PI/2) and not wasHit then
       wasHit = true
-      newAngle = rebound(alpha,obstacleDirection)
-      newDirection = alpha+newAngle
+      newDirection = alpha+rebound(alpha,obstacleDirection)
       if newDirection<-PI then newDirection = newDirection+2*PI end
       if newDirection >PI then newDirection = newDirection-2*PI end
    end
@@ -100,48 +107,52 @@ function gasLike(obstacleProximity, obstacleDirection, alpha)
          robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
          wasHit=false
       else
-         getToGoal(newAngle)
+         goalAngle=newDirection-alpha
+         if goalAngle<-PI then goalAngle = goalAngle+2*PI end
+         if goalAngle >PI then goalAngle = goalAngle-2*PI end
+         getToGoal(goalAngle)
       end
    end
 end
 
 function rebound(alpha, obstacleDirection)
    if obstacleDirection<=12 then --obstacle is to the left
-      newAngle = -2*(PI/2-PI*(obstacleDirection-0.5)/12)
+      newAngle = -2*(PI/2-obstacleDirection)
    else
-      newAngle = 2*(PI/2-PI*(24.5-obstacleDirection)/12)
+      newAngle = 2*(PI/2-obstacleDirection)
    end
    if newAngle>PI then newAngle = newAngle-2*PI end
    if newAngle<-PI then newAngle = newAngle+2*PI end
+   log(180*newAngle/PI)
    return newAngle
 end
 
-function updateObstaclesTable(obstaclesTable)
+function updateObstaclesTable(which, tabl)
    local sensor, reading, angle, value, rAngle, rDistance
-   for angle, value in pairs(obstaclesTable) do
+   for angle, value in pairs(tabl) do
       newValue=false
-      for sensor, reading in pairs(robot.distance_scanner.long_range) do
+      for sensor, reading in pairs(robot.distance_scanner[which]) do
          rAngle = reading.angle
          rDistance=reading.distance
          if rDistance == -2 then rDistance=151 end
+         if rDistance == -1 then rDistance=0 end
          if abs(angle-rAngle)<PI/DIR_NUMBER then
             if value>rDistance or not newValue then
-               obstaclesTable[angle]=rDistance
+               tabl[angle]=rDistance
+               newValue = true
             end
-            newValue = true
          end
       end
    end
-   return obstaclesTable
+   return tabl
 end
 
-function closestObstacleDirection()
-   local obstacleDirection = 1
-   local obstacleProximity = robot.proximity[1].value
-   for i=2,24 do
-      if obstacleProximity < robot.proximity[i].value then
-         obstacleDirection = i
-         obstacleProximity = robot.proximity[i].value
+function closestObstacleDirection(tabl)
+   local obstacleDirection, obstacleProximity, dir, prox
+   for dir, prox in pairs(tabl) do
+      if not obstacleProximity or prox<obstacleProximity then
+         obstacleDirection = dir
+         obstacleProximity = prox
       end
    end
    return obstacleProximity, obstacleDirection
@@ -175,7 +186,7 @@ function floorIsBlack()
 end
 
 function move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
-   if obstacleProximity == 0 then
+   if obstacleProximity >= 30 then
       if not lastHit or currentStep-lastHit < RANDOM_SPEED_TIME then
          speed=BASE_SPEED
       end
@@ -197,13 +208,13 @@ function newRandomSpeed(lastHit)
    return speed, lastHit
 end
 
-function closeObstacleAvoidance(obstacleProximity,obstacleDirection)
+function closeObstacleAvoidance(prox, dir)
    local vLeft, vRight
-   if obstacleDirection <= 12 then --Obstacle is to the left
-      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*speed/11
+   if dir >= 0 then --Obstacle is to the left
+      vRight=(prox/30)^OBSTACLE_PROXIMITY_DEPENDANCE*(dir/PI)^AVOIDANCE*speed
       vLeft=2*speed-vRight
    else --Obstacle is to the right
-      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*speed/11
+      vLeft=(prox/30)^OBSTACLE_PROXIMITY_DEPENDANCE*(-dir/PI)^AVOIDANCE*speed
       vRight=2*speed-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
@@ -288,6 +299,10 @@ function reset()
    obstaclesTable={}
    for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
       obstaclesTable[i]=151
+   end
+   shortObstaclesTable={}
+   for i=-PI+PI/EXPL_DIR_NUMBER, PI-PI/EXPL_DIR_NUMBER, 2*PI/EXPL_DIR_NUMBER do
+      shortObstaclesTable[i]=151
    end
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
