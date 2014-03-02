@@ -127,7 +127,6 @@ function rebound(alpha, obstacleDirection)
    end
    if newAngle>PI then newAngle = newAngle-2*PI end
    if newAngle<-PI then newAngle = newAngle+2*PI end
-   log(180*newAngle/PI)
    return newAngle
 end
 
@@ -190,7 +189,7 @@ function floorIsBlack()
 end
 
 function move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
-   if obstacleProximity >= 5 then
+   if obstacleProximity >= 10 then
       if not lastHit or currentStep-lastHit < RANDOM_SPEED_TIME then
          speed=BASE_SPEED
       end
