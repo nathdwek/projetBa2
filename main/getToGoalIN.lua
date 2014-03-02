@@ -6,14 +6,17 @@ PI=math.pi
 abs=math.abs
 CONVERGENCE=0.7
 MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
-BATT_BY_STEP = 0.2
+BATT_BY_STEP = .2
 SCANNER_RPM=75
 DIR_NUMBER = 15
 EXPL_DIR_NUMBER = 24
-OBSTACLE_PROXIMITY_DEPENDANCE=1
-AVOIDANCE=2
+OBSTACLE_PROXIMITY_DEPENDANCE=.5
+OBSTACLE_DIRECTION_DEPENDANCE=3
 RESSOURCEX=400
 RESSOURCEY=350
+
+
+--TODO:DO NOT RECEIVE THE SAME MESSAGE MULTIPLE TIMES
 
 
 --This function is executed every time you press the 'execute' button
@@ -41,6 +44,7 @@ function init()
    end
    goalX=RESSOURCEX
    goalY=RESSOURCEY
+   ressources={}
 end
 
 
@@ -63,6 +67,9 @@ function step()
       BASE_SPEED=0
       logerr("batt empty")
    end
+   if currentStep%200==0 then
+      log(#ressources)
+   end
 end
 
 function doMine(posX,posY,alpha,currentStep)
@@ -73,16 +80,35 @@ function doMine(posX,posY,alpha,currentStep)
       obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
       travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
       speed, lastHit = move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
+      local msg
+      for i=1,#robot.range_and_bearing do
+         if robot.range_and_bearing[i].data[1]==1 then
+            msg=robot.range_and_bearing[i].data
+            ressources[#ressources+1]={msg[2]*(100*msg[4]+msg[6]),msg[3]*(100*msg[5]+msg[7])}
+         end
+      end
    end
 end
 
 function doExplore(posX,posY,alpha,currentStep)
    if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)>=90 then
-      RESSOURCEX=posX
-      RESSOURCEY=posY
+      ressources[#ressources+1]={posX,posY}
       explore=false
+      wayBack=true
       goalX=0
       goalY=0
+      robot.range_and_bearing.set_data({1,sgn(posX),sgn(posY),math.floor(abs(posX)/100),math.floor(abs(posY)/100),abs(posX)%100,abs(posY)%100,0,0,0})
+   end
+   local msg
+   for i=1,#robot.range_and_bearing do
+      if robot.range_and_bearing[i].data[1]==1 then
+         msg=robot.range_and_bearing[i].data
+         ressources[#ressources+1]={msg[2]*(100*msg[4]+msg[6]),msg[3]*(100*msg[5]+msg[7])}
+         wayBack=true
+         explore=false
+         goalX=0
+         goalY=0
+      end
    end
    if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)<=70 then
       batt_rest=100
@@ -90,12 +116,26 @@ function doExplore(posX,posY,alpha,currentStep)
    local obstacleProximity, obstacleDirection
    shortObstaclesTable = updateObstaclesTable("short_range", shortObstaclesTable)
    obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
-   if batt_rest-5*math.sqrt(posX^2+posY^2)/BASE_SPEED<=10 then --values to discuss
+   if batt_rest-math.sqrt(posX^2+posY^2)/BASE_SPEED<=10 then --values to discuss
       obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
       speed, lastHit = move(obstaclesTable, posX, posY, alpha, 0, 0, obstacleProximity, obstacleDirection, lastHit)
    else
       gasLike(obstacleProximity, obstacleDirection, alpha)
    end
+end
+
+function sgn(n)
+   local sgn
+   if n==0 then
+      sgn=0
+   else
+      if n==abs(n) then
+         sgn=1
+      else
+         sgn=-1
+      end
+   end
+   return sgn
 end
 
 function gasLike(obstacleProximity, obstacleDirection, alpha)
@@ -162,17 +202,24 @@ function closestObstacleDirection(tabl)
 end
 
 function checkGoalReached(posX, posY, goalX, goalY, travels)
-   if floorIsBlack() and travels%2==0 and math.sqrt((posX)^2+(posY)^2)>=90 then
-      travels=travels+1
+   local pickSource
+   if floorIsBlack() and not wayBack and math.sqrt((posX)^2+(posY)^2)>=90 then
+      if math.sqrt((posX-goalX)^2+(posY-goalY)^2)>=25 then
+         ressources[#ressources+1]={posX,posY}
+         robot.range_and_bearing.set_data({1,sgn(posX),sgn(posY),math.floor(abs(posX)/100),math.floor(abs(posY)/100),abs(posX)%100,abs(posY)%100,0,0,0})
+      end
+      wayBack=true
       goalX=0
       goalY=0
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
-   elseif floorIsBlack() and travels%2==1 and math.sqrt((posX)^2+(posY)^2)<=70 then
+   elseif floorIsBlack() and wayBack and math.sqrt((posX)^2+(posY)^2)<=70 then
+      wayBack=false
       travels=travels+1
       batt_rest=100
-      goalX=RESSOURCEX
-      goalY=RESSOURCEY
+      pickSource=robot.random.uniform_int(1,#ressources+1)
+      goalX=ressources[pickSource][1]
+      goalY=ressources[pickSource][2]
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
    end
@@ -214,10 +261,10 @@ end
 function closeObstacleAvoidance(prox, dir)
    local vLeft, vRight
    if dir >= 0 then --Obstacle is to the left
-      vRight=(prox/30)^OBSTACLE_PROXIMITY_DEPENDANCE*(dir/PI)^AVOIDANCE*speed
+      vRight=(prox/30)^OBSTACLE_PROXIMITY_DEPENDANCE*(dir/PI)^OBSTACLE_DIRECTION_DEPENDANCE*speed
       vLeft=2*speed-vRight
    else --Obstacle is to the right
-      vLeft=(prox/30)^OBSTACLE_PROXIMITY_DEPENDANCE*(-dir/PI)^AVOIDANCE*speed
+      vLeft=(prox/30)^OBSTACLE_PROXIMITY_DEPENDANCE*(-dir/PI)^OBSTACLE_DIRECTION_DEPENDANCE*speed
       vRight=2*speed-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
@@ -307,6 +354,7 @@ function reset()
    for i=-PI+PI/EXPL_DIR_NUMBER, PI-PI/EXPL_DIR_NUMBER, 2*PI/EXPL_DIR_NUMBER do
       shortObstaclesTable[i]=151
    end
+   explore=true
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
       wasHit=false
@@ -314,6 +362,7 @@ function reset()
    BASE_SPEED=30
    goalX=RESSOURCEX
    goalY=RESSOURCEY
+   ressources={}
 end
 
 
