@@ -1,6 +1,6 @@
 -- Put your global variables here
 BASE_SPEED=30
-MIN_SPEED_COEFF = 0.4 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
+MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
 RANDOM_SPEED_TIME = 30 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
@@ -13,7 +13,7 @@ OBSTACLE_PROXIMITY_DEPENDANCE=.6
 OBSTACLE_DIRECTION_DEPENDANCE=.7
 MINE_PROB_WHEN_SRC_RECVD=.1
 ORGN_SRC_DST=40
-
+INIT_BATT_SEC=50
 
 --TODO:DAT REFACTOR...
 
@@ -25,6 +25,7 @@ function init()
    travels=0
    currentStep=0
    battery=100
+   backForBattery=false
    lastHit=0
    robot.distance_scanner.enable()
    robot.distance_scanner.set_rpm(SCANNER_RPM)
@@ -41,7 +42,7 @@ function init()
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
    end
    ressources={}
-   batterySecurity=25
+   batterySecurity=INIT_BATT_SEC
 end
 
 
@@ -50,27 +51,24 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   local obstacleProximity, obstacleDirection
-   obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, enoughBatt = doCommon()
+   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt
+   obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt = doCommon()
    if explore then
       doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
    else
       doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource, enoughBatt)
    end
-   if goalX and goalY and (goalX>500 or goalX<-500 or goalY>500 or goalY<-500) then
-      logerr('errgoal  ', goalX, "   ", goalY)
-   end
 end
 
 function doCommon()
-   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, enoughBatt
+   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt
    odometry()
    onSource, foundSource, backHome = checkGoalReached()
    gotSource = listen()
    shortObstaclesTable = updateObstaclesTable("short_range",shortObstaclesTable)
    obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
    battery=battery-BATT_BY_STEP
-   enoughBatt = battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED>10
+   backForBattery = backForBattery or battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED<10
    if battery==0 then
       BASE_SPEED=0
       logerr("batt empty")
@@ -96,14 +94,14 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
       travels=travels+1
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
-   elseif not enoughBatt then
+   elseif backForBattery then
       local goalX,goalY=0,0 --Override normal goalX, goalY, then go home because of what follows
    end
       obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
       move(obstaclesTable, obstacleProximity, obstacleDirection,goalX,goalY)
 end
 
-function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource)
+function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
    if foundSource then
       broadcastSource(posX,posY)
       explore=false
@@ -112,7 +110,7 @@ function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource)
    if gotSource then
       explore,goalX,goalY=robot.random.uniform()>MINE_PROB_WHEN_SRC_RECVD,0,0
    end
-   if enoughBatt then
+   if not backForBattery then
       gasLike(obstacleProximity, obstacleDirection)
    else
       obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
@@ -128,21 +126,11 @@ end
 
 function sourceIn(x,y)
    local msgOut={1,sgnIn(x),sgnIn(y),math.floor(abs(x)/100),math.floor(abs(y)/100),math.floor(abs(x)%100),math.floor(abs(y)%100),0,0,0}
-   for i=2,7 do
-      if msgOut[i]>255 or msgOut[i]<0 or msgOut[i]%1~=0 then
-         logerr("errmsgOut  ",i, "   ", msgOut[i])
-      end
-   end
    return msgOut
 end
 
 function sourceOut(msg)
    local x,y
-   for i=1,10 do
-      if msg[i]>255 or msg[i]<0 or msg[i]%1~=0 then
-         logerr("errmsgIn  ",i, "   ", msg[i])
-      end
-   end
    x=100*msg[4]+msg[6]
    if msg[2]==2 then
       x=-x
@@ -150,9 +138,6 @@ function sourceOut(msg)
    y=100*msg[5]+msg[7]
    if msg[3]==2 then
       y=-y
-   end
-   if x and y and (x>500 or y<-500 or y>500 or y<-500) then
-      logerr('errtransIn  ', x, "   ", y)
    end
    return {x,y}
 end
@@ -176,17 +161,15 @@ function gasLike(obstacleProximity, obstacleDirection)
    if obstacleProximity < 30 and not(obstacleDirection<-PI/2 or obstacleDirection>PI/2) and not wasHit then
       wasHit = true
       newDirection = alpha+rebound(alpha,obstacleDirection)
-      if newDirection<-PI then newDirection = newDirection+2*PI end
-      if newDirection >PI then newDirection = newDirection-2*PI end
+      newDirection=setCoupure(newDirection)
    end
+   robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
    if wasHit then
       if abs(alpha-newDirection)<0.3 then
-         robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
          wasHit=false
       else
          goalAngle=newDirection-alpha
-         if goalAngle<-PI then goalAngle = goalAngle+2*PI end
-         if goalAngle >PI then goalAngle = goalAngle-2*PI end
+         goalAngle=setCoupure(goalAngle)
          getToGoal(goalAngle)
       end
    end
@@ -198,8 +181,7 @@ function rebound(alpha, obstacleDirection)
    else
       newAngle = 2*(PI/2-obstacleDirection)
    end
-   if newAngle>PI then newAngle = newAngle-2*PI end
-   if newAngle<-PI then newAngle = newAngle+2*PI end
+   newAngle=setCoupure(newAngle)
    return newAngle
 end
 
@@ -217,7 +199,7 @@ end
 function sourceIsOriginal(x, y, rsc)
    local i=1
    local orgn=true
-   while i<#ressources and orgn do
+   while i<=#ressources and orgn do
       orgn=(math.sqrt((rsc[i][1]-x)^2 + (rsc[i][2]-y)^2)>ORGN_SRC_DST)
       i=i+1
    end
@@ -243,7 +225,10 @@ function checkGoalReached()
    elseif floorIsBlack() and math.sqrt((posX)^2+(posY)^2)<=70 then
       if goalX==0 and goalY==0 then
          backHome=true
+      end
+      if backForBattery then
          batterySecurity=updateBattCoeff(battery,batterySecurity)
+         backForBattery=false
       end
       battery=100
    end
@@ -252,10 +237,11 @@ end
 
 function updateBattCoeff(battery, batterySecurity)
    if battery>10 then
-      batterySecurity=batterySecurity+(battery-10)*.05
+      batterySecurity=batterySecurity-(battery-10)*.05
    else
-      batterySecurity=batterySecurity+(battery-10)*.15
+      batterySecurity=batterySecurity-(battery-10)*.15
    end
+   log(batterySecurity)
    return batterySecurity
 end
 
@@ -269,7 +255,7 @@ function floorIsBlack()
 end
 
 function move(obstaclesTable, obstacleProximity, obstacleDirection, goalX,goalY)
-   if obstacleProximity >= 20 then
+   if obstacleProximity >= 15 then
       if not lastHit or currentStep-lastHit < RANDOM_SPEED_TIME then
          speed=BASE_SPEED
       end
@@ -340,6 +326,7 @@ function reset()
    travels=0
    currentStep=0
    battery=100
+   backForBattery=false
    lastHit=0
    robot.distance_scanner.enable()
    robot.distance_scanner.set_rpm(SCANNER_RPM)
@@ -360,6 +347,7 @@ function reset()
    goalX=RESSOURCEX
    goalY=RESSOURCEY
    ressources={}
+   batterySecurity=INIT_BATT_SEC
 end
 
 function sgnIn(n)
@@ -428,6 +416,12 @@ function updateObstaclesTable(which, tabl)
       end
    end
    return tabl
+end
+
+function setCoupure(angle)
+   if angle<-PI then angle = angle+2*PI end
+   if angle >PI then angle = angle-2*PI end
+   return angle
 end
 
 
