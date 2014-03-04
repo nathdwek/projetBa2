@@ -24,7 +24,7 @@
       <!-- Normal actuator/sensor configuration follows -->
          <actuators>
             <differential_steering implementation="default" />
-            <range_and_bearing implementation="default" />
+            <range_and_bearing implementation="default"/>
             <leds implementation="default" medium="leds" />
             <footbot_distance_scanner implementation="default" />
          </actuators>
@@ -47,7 +47,7 @@
    <!-- * Arena configuration * -->
    <!-- *********************** -->
    <arena size="12, 12, 1" center="0,0,0.5">
-      <floor id="f" source="image" path="../floorPictures/nest_goal.png" />
+      <floor id="f" source="image" path="../floorPictures/manySources.png" />
 
       <box id="bn" size="0.1, 12, 0.2" movable="false">
          <body position="5.05,0,0"  orientation="0,0,0" />

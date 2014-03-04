@@ -1,31 +1,31 @@
 -- Put your global variables here
-BASE_SPEED=20
+BASE_SPEED=30
 MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
 RANDOM_SPEED_TIME = 30 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
-CONVERGENCE=1.3
-MAX_STEPS_BEFORE_LEAVING=150 --At the start of the experiment, each robot will randomly wait for a number of steps between 0 and this number
-BATT_BY_STEP = 0.01
-RESSOURCEX=400
-RESSOURCEY=350
+CONVERGENCE=0.7
+BATT_BY_STEP = .2
 SCANNER_RPM=75
-DIR_NUMBER = 19
-OBSTACLE_PROXIMITY_DEPENDANCE=1
-AVOIDANCE=2
+DIR_NUMBER = 15
+EXPL_DIR_NUMBER = 24
+OBSTACLE_PROXIMITY_DEPENDANCE=.6
+OBSTACLE_DIRECTION_DEPENDANCE=.7
+MINE_PROB_WHEN_SRC_RECVD=.1
+ORGN_SRC_DST=40
+INIT_BATT_SEC=50
+
+--TODO:DAT REFACTOR...
 
 
 --This function is executed every time you press the 'execute' button
 function init()
    speed=BASE_SPEED
-   steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
-   goalX=RESSOURCEX
-   goalY=RESSOURCEY
-   log("Next Goal is (", goalX, ", ", goalY, ")")
    AXIS_LENGTH=robot.wheels.axis_length
    travels=0
    currentStep=0
-   batt_rest=100
+   battery=100
+   backForBattery=false
    lastHit=0
    robot.distance_scanner.enable()
    robot.distance_scanner.set_rpm(SCANNER_RPM)
@@ -33,6 +33,16 @@ function init()
    for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
       obstaclesTable[i]=151
    end
+   shortObstaclesTable={}
+   for i=-PI+PI/EXPL_DIR_NUMBER, PI-PI/EXPL_DIR_NUMBER, 2*PI/EXPL_DIR_NUMBER do
+      shortObstaclesTable[i]=151
+   end
+   explore=true
+   if explore then
+      robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
+   end
+   ressources={}
+   batterySecurity=INIT_BATT_SEC
 end
 
 
@@ -41,70 +51,195 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   local obstacleProximity, obstacleDirection
-   posX, posY, alpha, currentStep=odometry(currentStep)
-   if currentStep>steps_before_leaving then
-      batt_rest = batt_rest - BATT_BY_STEP
-      obstaclesTable = updateObstaclesTable(obstaclesTable)
-      obstacleProximity, obstacleDirection=closestObstacleDirection()
-      travels, goalX, goalY=checkGoalReached(posX, posY, goalX, goalY,travels)
-      speed, lastHit = move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
-      if batt_rest<=0 then
-         logerr(robot.id, ": battery empty")
-      end
+   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt
+   obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt = doCommon()
+   if explore then
+      doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
+   else
+      doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource, enoughBatt)
+   end
+end
+
+function doCommon()
+   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt
+   odometry()
+   onSource, foundSource, backHome = checkGoalReached()
+   gotSource = listen()
+   shortObstaclesTable = updateObstaclesTable("short_range",shortObstaclesTable)
+   obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
+   battery=battery-BATT_BY_STEP
+   backForBattery = backForBattery or battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED<10
+   if battery==0 then
+      BASE_SPEED=0
+      logerr("batt empty")
    end
    if currentStep%5000==0 then
       log(travels)
    end
+   return obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, enoughBatt
 end
 
-function updateObstaclesTable(obstaclesTable)
-   local sensor, reading, angle, value, rAngle, rDistance
-   for angle, value in pairs(obstaclesTable) do
-      newValue=false
-      for sensor, reading in pairs(robot.distance_scanner.long_range) do
-         rAngle = reading.angle
-         rDistance=reading.distance
-         if rDistance == -2 then rDistance=151 end
-         if abs(angle-rAngle)<PI/DIR_NUMBER then
-            if value>rDistance or not newValue then
-               obstaclesTable[angle]=rDistance
-            end
-            newValue = true
+function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource,enoughBatt)
+   if foundSource then
+      broadcastSource(posX,posY)
+   end
+   if onSource then
+      goalX=0
+      goalY=0
+   elseif backHome then
+      goalX,goalY=chooseNewSource(ressources)
+      travels=travels+1
+      log(robot.id, ": travels done so far: ", travels)
+      log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
+   elseif backForBattery then
+      local goalX,goalY=0,0 --Override normal goalX, goalY, then go home because of what follows
+   end
+      obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
+      move(obstaclesTable, obstacleProximity, obstacleDirection,goalX,goalY)
+end
+
+function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
+   if foundSource then
+      broadcastSource(posX,posY)
+      explore=false
+      goalX,goalY=0,0
+   end
+   if gotSource then
+      explore,goalX,goalY=robot.random.uniform()>MINE_PROB_WHEN_SRC_RECVD,0,0
+   end
+   if not backForBattery then
+      gasLike(obstacleProximity, obstacleDirection)
+   else
+      obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
+      move(obstaclesTable, obstacleProximity, obstacleDirection,0,0)
+   end
+end
+
+function broadcastSource(x,y)
+   local msg=sourceIn(x,y)
+   robot.range_and_bearing.set_data(msg)
+end
+
+
+function sourceIn(x,y)
+   local msgOut={1,sgnIn(x),sgnIn(y),math.floor(abs(x)/100),math.floor(abs(y)/100),math.floor(abs(x)%100),math.floor(abs(y)%100),0,0,0}
+   return msgOut
+end
+
+function sourceOut(msg)
+   local x,y
+   x=100*msg[4]+msg[6]
+   if msg[2]==2 then
+      x=-x
+   end
+   y=100*msg[5]+msg[7]
+   if msg[3]==2 then
+      y=-y
+   end
+   return {x,y}
+end
+
+function listen()
+   local gotSource=false
+   for i=1,#robot.range_and_bearing do
+      if robot.range_and_bearing[i].data[1]==1 then
+         local source = sourceOut(robot.range_and_bearing[i].data)
+         if sourceIsOriginal(source[1],source[2],ressources) then
+            ressources[#ressources+1]=source
+            gotSource=true
          end
       end
    end
-   return obstaclesTable
+   return gotSource
 end
 
-function closestObstacleDirection()
-   local obstacleDirection = 1
-   local obstacleProximity = robot.proximity[1].value
-   for i=2,24 do
-      if obstacleProximity < robot.proximity[i].value then
-         obstacleDirection = i
-         obstacleProximity = robot.proximity[i].value
+function gasLike(obstacleProximity, obstacleDirection)
+   local goalAngle
+   if obstacleProximity < 30 and not(obstacleDirection<-PI/2 or obstacleDirection>PI/2) and not wasHit then
+      wasHit = true
+      newDirection = alpha+rebound(alpha,obstacleDirection)
+      newDirection=setCoupure(newDirection)
+   end
+   robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
+   if wasHit then
+      if abs(alpha-newDirection)<0.3 then
+         wasHit=false
+      else
+         goalAngle=newDirection-alpha
+         goalAngle=setCoupure(goalAngle)
+         getToGoal(goalAngle)
+      end
+   end
+end
+
+function rebound(alpha, obstacleDirection)
+   if obstacleDirection<=12 then --obstacle is to the left
+      newAngle = -2*(PI/2-obstacleDirection)
+   else
+      newAngle = 2*(PI/2-obstacleDirection)
+   end
+   newAngle=setCoupure(newAngle)
+   return newAngle
+end
+
+function closestObstacleDirection(tabl)
+   local obstacleDirection, obstacleProximity, dir, prox
+   for dir, prox in pairs(tabl) do
+      if not obstacleProximity or prox<obstacleProximity then
+         obstacleDirection = dir
+         obstacleProximity = prox
       end
    end
    return obstacleProximity, obstacleDirection
 end
 
-function checkGoalReached(posX, posY, goalX, goalY, travels)
-   if floorIsBlack() and travels%2==0 and math.sqrt((posX)^2+(posY)^2)>=90 then
-      travels=travels+1
-      goalX=0
-      goalY=0
-      log(robot.id, ": travels done so far: ", travels)
-      log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
-   elseif floorIsBlack() and travels%2==1 and math.sqrt((posX)^2+(posY)^2)<=70 then
-      travels=travels+1
-      batt_rest=100
-      goalX=RESSOURCEX
-      goalY=RESSOURCEY
-      log(robot.id, ": travels done so far: ", travels)
-      log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
+function sourceIsOriginal(x, y, rsc)
+   local i=1
+   local orgn=true
+   while i<=#ressources and orgn do
+      orgn=(math.sqrt((rsc[i][1]-x)^2 + (rsc[i][2]-y)^2)>ORGN_SRC_DST)
+      i=i+1
    end
-   return travels, goalX, goalY
+   return orgn
+end
+
+
+function chooseNewSource(rsc)
+   local pickSource=robot.random.uniform_int(1,#ressources+1)
+   local x=ressources[pickSource][1]
+   local y=ressources[pickSource][2]
+   return x, y
+end
+
+function checkGoalReached()
+   local foundSource, onSource, backHome=false,false,false
+   if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)>=90 then
+      if sourceIsOriginal(posX,posY, ressources) then
+         ressources[#ressources+1]={posX,posY}
+         foundSource=true
+      end
+      onSource=true
+   elseif floorIsBlack() and math.sqrt((posX)^2+(posY)^2)<=70 then
+      if goalX==0 and goalY==0 then
+         backHome=true
+      end
+      if backForBattery then
+         batterySecurity=updateBattCoeff(battery,batterySecurity)
+         backForBattery=false
+      end
+      battery=100
+   end
+   return onSource, foundSource, backHome
+end
+
+function updateBattCoeff(battery, batterySecurity)
+   if battery>10 then
+      batterySecurity=batterySecurity-(battery-10)*.05
+   else
+      batterySecurity=batterySecurity-(battery-10)*.15
+   end
+   log(batterySecurity)
+   return batterySecurity
 end
 
 function floorIsBlack()
@@ -116,8 +251,8 @@ function floorIsBlack()
    end
 end
 
-function move(obstaclesTable, posX, posY, alpha, goalX, goalY, obstacleProximity, obstacleDirection, lastHit)
-   if obstacleProximity == 0 then
+function move(obstaclesTable, obstacleProximity, obstacleDirection, goalX,goalY)
+   if obstacleProximity >= 15 then
       if not lastHit or currentStep-lastHit < RANDOM_SPEED_TIME then
          speed=BASE_SPEED
       end
@@ -139,29 +274,16 @@ function newRandomSpeed(lastHit)
    return speed, lastHit
 end
 
-function closeObstacleAvoidance(obstacleProximity,obstacleDirection)
+function closeObstacleAvoidance(prox, dir)
    local vLeft, vRight
-   if obstacleDirection <= 12 then --Obstacle is to the left
-      vRight=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*obstacleDirection-AVOIDANCE)*speed/11
+   if dir >= 0 then --Obstacle is to the left
+      vRight=(prox/30)^OBSTACLE_PROXIMITY_DEPENDANCE*(dir/PI)^OBSTACLE_DIRECTION_DEPENDANCE*speed
       vLeft=2*speed-vRight
    else --Obstacle is to the right
-      vLeft=((1-obstacleProximity)^OBSTACLE_PROXIMITY_DEPENDANCE*(25-obstacleDirection)-AVOIDANCE)*speed/11
+      vLeft=(prox/30)^OBSTACLE_PROXIMITY_DEPENDANCE*(-dir/PI)^OBSTACLE_DIRECTION_DEPENDANCE*speed
       vRight=2*speed-vLeft
    end
    robot.wheels.set_velocity(vLeft, vRight)
-end
-
-function odometry(currentStep)
-   local x=100*robot.positioning.position.x
-   local y=100*robot.positioning.position.y
-   local angle=robot.positioning.orientation.axis.z*robot.positioning.orientation.angle
-   if angle >PI then
-      angle = angle - 2*PI
-   end
-   if angle < -PI then
-      angle = angle + 2*PI
-   end
-   return x,y,angle, currentStep+1
 end
 
 function getToGoal(goalAngle)
@@ -173,6 +295,70 @@ function getToGoal(goalAngle)
       vLeft = 2*speed - vRight
    end
    robot.wheels.set_velocity(vLeft, vRight)
+end
+
+function obstacleAvoidance(goalAngle, obstaclesTable)
+   local bestAngle, bestDistance, angle, distance
+   bestDistance = -1
+   for angle, distance in pairs(obstaclesTable) do
+      if distance>bestDistance or (distance==bestDistance and not bestAngle) or (distance==bestDistance and abs(angle-goalAngle)<abs(bestAngle-goalAngle)) then
+         bestDistance = distance
+         bestAngle = angle
+      end
+   end
+   getToGoal(bestAngle)
+end
+
+--[[This function is executed every time you press the 'reset'
+   button in the GUI. It is supposed to restore the state
+   of the controller to whatever it was right after init() was
+   called. The state of sensors and actuators is reset
+   automatically by ARGoS.
+]]
+function reset()
+   speed=BASE_SPEED
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
+   log("Next Goal is (", goalX, ", ", goalY, ")")
+   travels=0
+   currentStep=0
+   battery=100
+   backForBattery=false
+   lastHit=0
+   robot.distance_scanner.enable()
+   robot.distance_scanner.set_rpm(SCANNER_RPM)
+   obstaclesTable={}
+   for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
+      obstaclesTable[i]=151
+   end
+   shortObstaclesTable={}
+   for i=-PI+PI/EXPL_DIR_NUMBER, PI-PI/EXPL_DIR_NUMBER, 2*PI/EXPL_DIR_NUMBER do
+      shortObstaclesTable[i]=151
+   end
+   explore=true
+   if explore then
+      robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
+      wasHit=false
+   end
+   BASE_SPEED=30
+   goalX=RESSOURCEX
+   goalY=RESSOURCEY
+   ressources={}
+   batterySecurity=INIT_BATT_SEC
+end
+
+function sgnIn(n)
+   local sgn
+   if n==0 then
+      sgn=0
+   else
+      if n==abs(n) then
+         sgn=1
+      else
+         sgn=2
+      end
+   end
+   return sgn
 end
 
 function findGoalDirection(posX, posY, goalX, goalY)
@@ -196,41 +382,43 @@ function findGoalAngle(goalDirection,alpha)
    return goalAngle
 end
 
-function obstacleAvoidance(goalAngle, obstaclesTable)
-   local bestAngle, bestDistance, angle, distance
-   bestDistance = -1
-   for angle, distance in pairs(obstaclesTable) do
-      if distance>bestDistance or (distance==bestDistance and not bestAngle) or (distance==bestDistance and abs(angle-goalAngle)<abs(bestAngle-goalAngle)) then
-         bestDistance = distance
-         bestAngle = angle
-      end
+function odometry()
+   posX=100*robot.positioning.position.x
+   posY=100*robot.positioning.position.y
+   alpha=robot.positioning.orientation.axis.z*robot.positioning.orientation.angle
+   if alpha >PI then
+      alpha = alpha - 2*PI
    end
-   getToGoal(bestAngle)
+   if alpha < -PI then
+      alpha = alpha + 2*PI
+   end
+   currentStep=currentStep+1
 end
 
---[[This function is executed every time you press the 'reset'
-   button in the GUI. It is supposed to restore the state
-   of the controller to whatever it was right after init() was
-   called. The state of sensors and actuators is reset
-   automatically by ARGoS.
-]]
-function reset()
-   speed=BASE_SPEED
-   steps_before_leaving=robot.random.uniform(1,MAX_STEPS_BEFORE_LEAVING)
-   goalX=RESSOURCEX
-   goalY=RESSOURCEY
-   log("Next Goal is (", goalX, ", ", goalY, ")")
-   AXIS_LENGTH=robot.wheels.axis_length
-   travels=0
-   currentStep=0
-   batt_rest=100
-   lastHit=0
-   robot.distance_scanner.enable()
-   robot.distance_scanner.set_rpm(SCANNER_RPM)
-   obstaclesTable={}
-   for i=-PI+PI/DIR_NUMBER, PI-PI/DIR_NUMBER, 2*PI/DIR_NUMBER do
-      obstaclesTable[i]=151
+function updateObstaclesTable(which, tabl)
+   local sensor, reading, angle, value, rAngle, rDistance
+   for angle, value in pairs(tabl) do
+      newValue=false
+      for sensor, reading in pairs(robot.distance_scanner[which]) do
+         rAngle = reading.angle
+         rDistance=reading.distance
+         if rDistance == -2 then rDistance=151 end
+         if rDistance == -1 then rDistance=0 end
+         if abs(angle-rAngle)<PI/DIR_NUMBER then
+            if value>rDistance or not newValue then
+               tabl[angle]=rDistance
+               newValue = true
+            end
+         end
+      end
    end
+   return tabl
+end
+
+function setCoupure(angle)
+   if angle<-PI then angle = angle+2*PI end
+   if angle >PI then angle = angle-2*PI end
+   return angle
 end
 
 
