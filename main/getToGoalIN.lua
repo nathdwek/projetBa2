@@ -73,9 +73,6 @@ function doCommon()
       BASE_SPEED=0
       logerr("batt empty")
    end
-   if currentStep%200==0 then
-      log(#ressources)
-   end
    if currentStep%5000==0 then
       log(travels)
    end
