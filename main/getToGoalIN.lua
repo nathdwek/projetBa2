@@ -70,7 +70,7 @@ function doCommon()
    shortObstaclesTable = updateObstaclesTable("short_range",shortObstaclesTable)
    obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
    battery=battery-BATT_BY_STEP
-   enoughBatt = battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED>0
+   enoughBatt = battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED>10
    if battery==0 then
       BASE_SPEED=0
       logerr("batt empty")
@@ -243,10 +243,20 @@ function checkGoalReached()
    elseif floorIsBlack() and math.sqrt((posX)^2+(posY)^2)<=70 then
       if goalX==0 and goalY==0 then
          backHome=true
+         batterySecurity=updateBattCoeff(battery,batterySecurity)
       end
       battery=100
    end
    return onSource, foundSource, backHome
+end
+
+function updateBattCoeff(battery, batterySecurity)
+   if battery>10 then
+      batterySecurity=batterySecurity+(battery-10)*.05
+   else
+      batterySecurity=batterySecurity+(battery-10)*.15
+   end
+   return batterySecurity
 end
 
 function floorIsBlack()
