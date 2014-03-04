@@ -98,7 +98,7 @@
       <!-- ************************************************************************ -->
       <!-- * To activate the Lua editor, just use the 'lua_editor' flag attribute * -->
       <!-- ************************************************************************ -->
-      <qt-opengl lua_editor="false">
+      <qt-opengl lua_editor="true">
          <camera>
             <placement idx="0" position="0,0,3" look_at="0,0,0" lens_focal_length="7" />
          </camera>
