@@ -11,8 +11,8 @@ DIR_NUMBER = 15
 EXPL_DIR_NUMBER = 24
 OBSTACLE_PROXIMITY_DEPENDANCE=.3
 OBSTACLE_DIRECTION_DEPENDANCE=.3
-MINE_PROB_WHEN_SRC_RECVD=.2
-ORGN_SRC_DST=50
+MINE_PROB_WHEN_SRC_RECVD=.3
+ORGN_SRC_DST=40
 INIT_BATT_SEC=30
 EMER_DIR_DEP=1
 EMER_PROX_DEP=1
@@ -415,12 +415,7 @@ function odometry()
    posX=100*robot.positioning.position.x
    posY=100*robot.positioning.position.y
    alpha=robot.positioning.orientation.axis.z*robot.positioning.orientation.angle
-   if alpha >PI then
-      alpha = alpha - 2*PI
-   end
-   if alpha < -PI then
-      alpha = alpha + 2*PI
-   end
+   alpha=setCoupure(alpha)
    currentStep=currentStep+1
 end
 
