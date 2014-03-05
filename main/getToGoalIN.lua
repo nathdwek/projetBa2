@@ -9,11 +9,13 @@ BATT_BY_STEP = .2
 SCANNER_RPM=75
 DIR_NUMBER = 15
 EXPL_DIR_NUMBER = 24
-OBSTACLE_PROXIMITY_DEPENDANCE=.6
-OBSTACLE_DIRECTION_DEPENDANCE=.7
-MINE_PROB_WHEN_SRC_RECVD=.1
-ORGN_SRC_DST=40
-INIT_BATT_SEC=50
+OBSTACLE_PROXIMITY_DEPENDANCE=.3
+OBSTACLE_DIRECTION_DEPENDANCE=.3
+MINE_PROB_WHEN_SRC_RECVD=.2
+ORGN_SRC_DST=50
+INIT_BATT_SEC=30
+EMER_DIR_DEP=1
+EMER_PROX_DEP=1
 
 --TODO:DAT REFACTOR...
 
@@ -51,9 +53,11 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt
-   obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt = doCommon()
-   if explore then
+   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt, emerProx, emerDir
+   obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt, emerProx, emerDir = doCommon()
+   if emerProx>0 then
+      emergencyAvoidance(emerProx, emerDir)
+   elseif explore then
       doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
    else
       doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource, enoughBatt)
@@ -61,7 +65,7 @@ function step()
 end
 
 function doCommon()
-   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt
+   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt, emerProx, emerDir
    odometry()
    onSource, foundSource, backHome = checkGoalReached()
    gotSource = listen()
@@ -69,6 +73,7 @@ function doCommon()
    obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
    battery=battery-BATT_BY_STEP
    backForBattery = backForBattery or battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED<10
+   emerProx, emerDir=readProxSensor()
    if battery==0 then
       BASE_SPEED=0
       logerr("batt empty")
@@ -76,7 +81,31 @@ function doCommon()
    if currentStep%5000==0 then
       log(travels)
    end
-   return obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, enoughBatt
+   return obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, enoughBatt, emerProx, emerDir
+end
+
+function readProxSensor()
+   local emerDir = 1
+   local emerProx = robot.proximity[1].value
+   for i=2,24 do
+      if emerProx < robot.proximity[i].value or (emerProx == robot.proximity[i].value and abs(12-emerDir)<abs(12-i)) then
+         emerDir = i
+         emerProx = robot.proximity[i].value
+      end
+   end
+   return emerProx, emerDir
+end
+
+function emergencyAvoidance(emerProx,emerDir)
+   local vLeft, vRight
+   if emerDir <= 12 then --Obstacle is to the left
+      vRight=((1-emerProx)^EMER_PROX_DEP*emerDir-EMER_DIR_DEP)*speed/11
+      vLeft=2*speed-vRight
+   else --Obstacle is to the right
+      vLeft=((1-emerProx)^EMER_PROX_DEP*(25-emerDir)-EMER_DIR_DEP)*speed/11
+      vRight=2*speed-vLeft
+   end
+   robot.wheels.set_velocity(vLeft, vRight)
 end
 
 function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource,enoughBatt)
@@ -252,7 +281,7 @@ function floorIsBlack()
 end
 
 function move(obstaclesTable, obstacleProximity, obstacleDirection, goalX,goalY)
-   if obstacleProximity >= 15 then
+   if obstacleProximity >= 30 then
       if not lastHit or currentStep-lastHit < RANDOM_SPEED_TIME then
          speed=BASE_SPEED
       end
@@ -317,6 +346,7 @@ end
 ]]
 function reset()
    speed=BASE_SPEED
+   BASE_SPEED=30
    goalX=RESSOURCEX
    goalY=RESSOURCEY
    log("Next Goal is (", goalX, ", ", goalY, ")")
@@ -340,7 +370,6 @@ function reset()
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
       wasHit=false
    end
-   BASE_SPEED=30
    goalX=RESSOURCEX
    goalY=RESSOURCEY
    ressources={}
