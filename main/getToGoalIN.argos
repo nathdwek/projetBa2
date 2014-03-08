@@ -47,7 +47,7 @@
    <!-- * Arena configuration * -->
    <!-- *********************** -->
    <arena size="12, 12, 1" center="0,0,0.5">
-      <floor id="f" source="image" path="../floorPictures/manySources.png" />
+      <floor id="f" source="image" path="../floorPictures/manySources2.png" />
 
       <box id="bn" size="0.1, 12, 0.2" movable="false">
          <body position="5.05,0,0"  orientation="0,0,0" />
