@@ -4,16 +4,16 @@ MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporar
 RANDOM_SPEED_TIME = 30 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
-CONVERGENCE=0.7
+CONVERGENCE=1
 BATT_BY_STEP = .2
 SCANNER_RPM=75
 DIR_NUMBER = 15
-EXPL_DIR_NUMBER = 24
-OBSTACLE_PROXIMITY_DEPENDANCE=.3
-OBSTACLE_DIRECTION_DEPENDANCE=.3
-MINE_PROB_WHEN_SRC_RECVD=.3
-ORGN_SRC_DST=40
-INIT_BATT_SEC=30
+EXPL_DIR_NUMBER = 20
+OBSTACLE_PROXIMITY_DEPENDANCE=.25
+OBSTACLE_DIRECTION_DEPENDANCE=.25
+MINE_PROB_WHEN_SRC_RECVD=.4
+ORGN_SRC_DST=80
+INIT_BATT_SEC=25
 EMER_DIR_DEP=1
 EMER_PROX_DEP=1
 
@@ -191,7 +191,7 @@ function gasLike(obstacleProximity, obstacleDirection)
    end
    robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
    if wasHit then
-      if abs(alpha-newDirection)<0.3 then
+      if abs(alpha-newDirection)<0.2 then
          wasHit=false
       else
          goalAngle=newDirection-alpha
@@ -263,7 +263,7 @@ end
 
 function updateBattCoeff(battery, batterySecurity)
    if battery>10 then
-      batterySecurity=batterySecurity-(battery-10)*.05
+      batterySecurity=batterySecurity-(battery-10)*.1
    else
       batterySecurity=batterySecurity-(battery-10)*.15
    end
