@@ -40,10 +40,12 @@ function init()
       shortObstaclesTable[i]=151
    end
    explore=true
+   ressources={}
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
+   else
+      goalX,goalY=chooseNewSource(ressources)
    end
-   ressources={}
    batterySecurity=INIT_BATT_SEC
 end
 
@@ -53,19 +55,19 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt, emerProx, emerDir
-   obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt, emerProx, emerDir = doCommon()
+   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir
+   obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir = doCommon()
    if emerProx>0 then
       emergencyAvoidance(emerProx, emerDir)
    elseif explore then
-      doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
+      doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource)
    else
-      doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource, enoughBatt)
+      doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource)
    end
 end
 
 function doCommon()
-   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, enoughBatt, emerProx, emerDir
+   local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir
    odometry()
    onSource, foundSource, backHome = checkGoalReached()
    gotSource = listen()
@@ -81,7 +83,7 @@ function doCommon()
    if currentStep%5000==0 then
       log(travels)
    end
-   return obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, enoughBatt, emerProx, emerDir
+   return obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, emerProx, emerDir
 end
 
 function readProxSensor()
@@ -108,7 +110,7 @@ function emergencyAvoidance(emerProx,emerDir)
    robot.wheels.set_velocity(vLeft, vRight)
 end
 
-function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource,enoughBatt)
+function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource)
    if foundSource then
       broadcastSource(posX,posY)
    end
@@ -120,11 +122,13 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
       travels=travels+1
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
-   elseif backForBattery then
-      local goalX,goalY=0,0 --Override normal goalX, goalY, then go home because of what follows
    end
+   if backForBattery then
+      move(obstaclesTable, obstacleProximity, obstacleDirection,0,0)
+   else
       obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
       move(obstaclesTable, obstacleProximity, obstacleDirection,goalX,goalY)
+   end
 end
 
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
@@ -267,7 +271,7 @@ function updateBattCoeff(battery, batterySecurity)
    else
       batterySecurity=batterySecurity-(battery-10)*.15
    end
-   log(batterySecurity)
+   log("bSec ",batterySecurity)
    return batterySecurity
 end
 
@@ -366,13 +370,13 @@ function reset()
       shortObstaclesTable[i]=151
    end
    explore=true
+   ressources={}
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
-      wasHit=false
+		wasHit=false
+   else
+      goalX,goalY=chooseNewSource(ressources)
    end
-   goalX=RESSOURCEX
-   goalY=RESSOURCEY
-   ressources={}
    batterySecurity=INIT_BATT_SEC
 end
 
