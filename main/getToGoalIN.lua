@@ -56,6 +56,12 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
+   --[[for key, value in pairs(ressources) do
+      for key2, value2 in pairs(value) do
+         log(key2)
+         log(value2)
+      end
+   end]]
    local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir
    obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir = doCommon()
    if emerProx>0 then
@@ -116,10 +122,12 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
       broadcastSource(posX,posY)
    end
    if onSource then
+      if goalX~=0 and goalY~=0 then
+         evalSource(sourceId, battery)
+      end
       goalX=0
       goalY=0
    elseif backHome then
-	  evalSource(sourceId, battery)
       sourceId,goalX,goalY=chooseNewSource(ressources)
       travels=travels+1
       log(robot.id, ": travels done so far: ", travels)
@@ -134,7 +142,12 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
 end
 
 function evalSource(sourceId, battery)
-   ressources[sourceId].score=ressources[sourceId].score*(battery--TODOOOOO
+   if battery>60 then
+      ressources[sourceId].score=ressources[sourceId].score+(1-ressources[sourceId].score)*battery/100
+   else
+      ressources[sourceId].score=ressources[sourceId].score-ressources[sourceId].score*(100-battery)/100
+   end
+   log(ressources[sourceId].score)
 end
 
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
@@ -184,6 +197,7 @@ function listen()
       if robot.range_and_bearing[i].data[1]==1 then
          local source = sourceOut(robot.range_and_bearing[i].data)
          if sourceIsOriginal(source[1],source[2],ressources) then
+            source.score=.5
             ressources[#ressources+1]=source
             gotSource=true
          end
@@ -244,10 +258,11 @@ end
 
 
 function chooseNewSource(rsc)
-   local sourceChoosed=false
-   while not sourceChoosed do
-      local pickSource=robot.random.uniform_int(1,#ressources+1)
-      sourceChoosed=robot.random.uniform()<rsc[pickSource].score
+   local sourceChosen=false
+   local pickSource
+   while not sourceChosen do
+      pickSource=robot.random.uniform_int(1,#rsc+1)
+      sourceChosen=robot.random.uniform()<rsc[pickSource].score
    end
    local x=rsc[pickSource][1]
    local y=rsc[pickSource][2]
@@ -259,6 +274,7 @@ function checkGoalReached()
    if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)>=90 then
       if sourceIsOriginal(posX,posY, ressources) then
          ressources[#ressources+1]={posX,posY,score=.5}
+         sourceId=#ressources
          foundSource=true
       end
       onSource=true
@@ -279,9 +295,9 @@ function updateBattCoeff(battery, batterySecurity)
    if battery>10 then
       batterySecurity=batterySecurity-(battery-10)*.1
    else
-      batterySecurity=batterySecurity-(battery-10)*.15
+      batterySecurity=batterySecurity-(battery-10)*.1
    end
-   log("bSec ",batterySecurity)
+   --log("bSec ",batterySecurity)
    return batterySecurity
 end
 

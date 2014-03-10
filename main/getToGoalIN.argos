@@ -47,7 +47,7 @@
    <!-- * Arena configuration * -->
    <!-- *********************** -->
    <arena size="12, 12, 1" center="0,0,0.5">
-      <floor id="f" source="image" path="../floorPictures/manySources2.png" />
+      <floor id="f" source="image" path="../floorPictures/manySources.png" />
 
       <box id="bn" size="0.1, 12, 0.2" movable="false">
          <body position="5.05,0,0"  orientation="0,0,0" />
@@ -98,7 +98,7 @@
       <!-- ************************************************************************ -->
       <!-- * To activate the Lua editor, just use the 'lua_editor' flag attribute * -->
       <!-- ************************************************************************ -->
-      <qt-opengl lua_editor="false">
+      <qt-opengl lua_editor="true">
          <camera>
             <placement idx="0" position="0,0,3" look_at="0,0,0" lens_focal_length="7" />
          </camera>
