@@ -45,7 +45,7 @@ function init()
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
    else
-      goalX,goalY=chooseNewSource(ressources)
+      sourceId,goalX,goalY=chooseNewSource(ressources)
    end
    batterySecurity=INIT_BATT_SEC
 end
@@ -118,8 +118,9 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
    if onSource then
       goalX=0
       goalY=0
+      evalSource(sourceId, battery)
    elseif backHome then
-      goalX,goalY=chooseNewSource(ressources)
+      sourceId,goalX,goalY=chooseNewSource(ressources)
       travels=travels+1
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
@@ -130,6 +131,10 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
       obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
       move(obstaclesTable, obstacleProximity, obstacleDirection,goalX,goalY)
    end
+end
+
+function evalSource(sourceId, battery)
+   ressources[sourceId].score=ressources[sourceId].score*(battery--TODOOOOO
 end
 
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
@@ -239,17 +244,21 @@ end
 
 
 function chooseNewSource(rsc)
-   local pickSource=robot.random.uniform_int(1,#ressources+1)
-   local x=ressources[pickSource][1]
-   local y=ressources[pickSource][2]
-   return x, y
+   local sourceChoosed=false
+   while not sourceChoosed do
+      local pickSource=robot.random.uniform_int(1,#ressources+1)
+      sourceChoosed=robot.random.uniform()<rsc[pickSource].score
+   end
+   local x=rsc[pickSource][1]
+   local y=rsc[pickSource][2]
+   return pickSource,x, y
 end
 
 function checkGoalReached()
    local foundSource, onSource, backHome=false,false,false
    if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)>=90 then
       if sourceIsOriginal(posX,posY, ressources) then
-         ressources[#ressources+1]={posX,posY}
+         ressources[#ressources+1]={posX,posY,score=.5}
          foundSource=true
       end
       onSource=true
@@ -376,7 +385,7 @@ function reset()
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
       wasHit=false
    else
-      goalX,goalY=chooseNewSource(ressources)
+      sourceId, goalX,goalY=chooseNewSource(ressources)
    end
    batterySecurity=INIT_BATT_SEC
 end
