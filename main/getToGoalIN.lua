@@ -9,9 +9,10 @@ BATT_BY_STEP = .2
 SCANNER_RPM=75
 DIR_NUMBER = 15
 EXPL_DIR_NUMBER = 20
+EXPL_CONV = 3
 OBSTACLE_PROXIMITY_DEPENDANCE=.25
 OBSTACLE_DIRECTION_DEPENDANCE=.25
-MINE_PROB_WHEN_SRC_RECVD=.4
+MINE_PROB_WHEN_SRC_RECVD=.2
 ORGN_SRC_DST=80
 INIT_BATT_SEC=25
 EMER_DIR_DEP=1
@@ -200,7 +201,7 @@ function gasLike(obstacleProximity, obstacleDirection)
       else
          goalAngle=newDirection-alpha
          goalAngle=setCoupure(goalAngle)
-         getToGoal(goalAngle)
+         getToGoal(goalAngle, EXPL_CONV)
       end
    end
 end
@@ -319,12 +320,12 @@ function closeObstacleAvoidance(prox, dir)
    robot.wheels.set_velocity(vLeft, vRight)
 end
 
-function getToGoal(goalAngle)
+function getToGoal(goalAngle, conv)
    if goalAngle>=0 then --goal is to the left
-      vLeft=speed*((PI-goalAngle)/PI)^CONVERGENCE
+      vLeft=speed*((PI-goalAngle)/PI)^conv
       vRight = 2*speed-vLeft
    else --goal is to the right
-      vRight=speed*((PI+goalAngle)/PI)^CONVERGENCE
+      vRight=speed*((PI+goalAngle)/PI)^conv
       vLeft = 2*speed - vRight
    end
    robot.wheels.set_velocity(vLeft, vRight)
@@ -339,7 +340,7 @@ function obstacleAvoidance(goalAngle, obstaclesTable)
          bestAngle = angle
       end
    end
-   getToGoal(bestAngle)
+   getToGoal(bestAngle, CONVERGENCE)
 end
 
 --[[This function is executed every time you press the 'reset'
@@ -373,7 +374,7 @@ function reset()
    ressources={}
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
-		wasHit=false
+      wasHit=false
    else
       goalX,goalY=chooseNewSource(ressources)
    end
