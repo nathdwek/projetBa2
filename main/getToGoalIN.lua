@@ -118,8 +118,8 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
    if onSource then
       goalX=0
       goalY=0
-      evalSource(sourceId, battery)
    elseif backHome then
+	  evalSource(sourceId, battery)
       sourceId,goalX,goalY=chooseNewSource(ressources)
       travels=travels+1
       log(robot.id, ": travels done so far: ", travels)
