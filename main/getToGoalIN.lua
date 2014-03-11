@@ -142,7 +142,7 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
 end
 
 function evalSource(sourceId, battery)
-   if battery>60 then
+   if battery>70 then
       ressources[sourceId].score=ressources[sourceId].score+(1-ressources[sourceId].score)*battery/100
    else
       ressources[sourceId].score=ressources[sourceId].score-ressources[sourceId].score*(100-battery)/100
@@ -274,7 +274,6 @@ function checkGoalReached()
    if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)>=90 then
       if sourceIsOriginal(posX,posY, ressources) then
          ressources[#ressources+1]={posX,posY,score=.5}
-         sourceId=#ressources
          foundSource=true
       end
       onSource=true
