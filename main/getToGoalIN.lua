@@ -83,6 +83,9 @@ function doCommon()
    battery=battery-BATT_BY_STEP
    backForBattery = backForBattery or battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED<10
    emerProx, emerDir=readProxSensor()
+   if #ressources>=1 then
+      broadcastSource(chooseSourceToBroadcast())
+   end
    if battery==0 then
       BASE_SPEED=0
       logerr("batt empty")
@@ -91,6 +94,11 @@ function doCommon()
       log(travels)
    end
    return obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, emerProx, emerDir
+end
+
+function chooseSourceToBroadcast()
+   local i=(currentStep%#ressources)+1
+   return ressources[i][1],ressources[i][2]
 end
 
 function readProxSensor()
@@ -118,9 +126,6 @@ function emergencyAvoidance(emerProx,emerDir)
 end
 
 function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource)
-   if foundSource then
-      broadcastSource(posX,posY)
-   end
    if onSource then
       if goalX~=0 and goalY~=0 then
          evalSource(sourceId, battery)
@@ -152,7 +157,6 @@ end
 
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
    if foundSource then
-      broadcastSource(posX,posY)
       explore=false
       goalX,goalY=0,0
    end
