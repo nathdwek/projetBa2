@@ -217,7 +217,6 @@ function gasLike(obstacleProximity, obstacleDirection)
       newDirection = alpha+rebound(alpha,obstacleDirection)
       newDirection=setCoupure(newDirection)
    end
-   robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
    if wasHit then
       if abs(alpha-newDirection)<0.2 then
          wasHit=false
@@ -226,6 +225,8 @@ function gasLike(obstacleProximity, obstacleDirection)
          goalAngle=setCoupure(goalAngle)
          getToGoal(goalAngle, EXPL_CONV)
       end
+   else
+      robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
    end
 end
 
