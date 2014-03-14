@@ -45,7 +45,7 @@ function init()
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
    else
-      goalX,goalY=chooseNewSource(ressources)
+      sourceId,goalX,goalY=chooseNewSource(ressources)
    end
    batterySecurity=INIT_BATT_SEC
 end
@@ -77,6 +77,9 @@ function doCommon()
    battery=battery-BATT_BY_STEP
    backForBattery = backForBattery or battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED<10
    emerProx, emerDir=readProxSensor()
+   if #ressources>=1 then
+      broadcastSource(chooseSourceToBroadcast())
+   end
    if battery==0 then
       BASE_SPEED=0
       logerr("batt empty")
@@ -85,6 +88,11 @@ function doCommon()
       log(travels)
    end
    return obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, emerProx, emerDir
+end
+
+function chooseSourceToBroadcast()
+   local i=(currentStep%#ressources)+1
+   return ressources[i][1],ressources[i][2]
 end
 
 function readProxSensor()
@@ -112,14 +120,14 @@ function emergencyAvoidance(emerProx,emerDir)
 end
 
 function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource)
-   if foundSource then
-      broadcastSource(posX,posY)
-   end
    if onSource then
+      if goalX~=0 and goalY~=0 then
+         evalSource(sourceId, battery)
+      end
       goalX=0
       goalY=0
    elseif backHome then
-      goalX,goalY=chooseNewSource(ressources)
+      sourceId,goalX,goalY=chooseNewSource(ressources)
       travels=travels+1
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
@@ -132,9 +140,17 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundS
    end
 end
 
+function evalSource(sourceId, battery)
+   if battery>70 then
+      ressources[sourceId].score=ressources[sourceId].score+(1-ressources[sourceId].score)*battery/100
+   else
+      ressources[sourceId].score=ressources[sourceId].score-ressources[sourceId].score*(100-battery)/100
+   end
+   log(ressources[sourceId].score)
+end
+
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
    if foundSource then
-      broadcastSource(posX,posY)
       explore=false
       goalX,goalY=0,0
    end
@@ -179,6 +195,7 @@ function listen()
       if robot.range_and_bearing[i].data[1]==1 then
          local source = sourceOut(robot.range_and_bearing[i].data)
          if sourceIsOriginal(source[1],source[2],ressources) then
+            source.score=.5
             ressources[#ressources+1]=source
             gotSource=true
          end
@@ -194,7 +211,6 @@ function gasLike(obstacleProximity, obstacleDirection)
       newDirection = alpha+rebound(alpha,obstacleDirection)
       newDirection=setCoupure(newDirection)
    end
-   robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
    if wasHit then
       if abs(alpha-newDirection)<0.2 then
          wasHit=false
@@ -203,6 +219,8 @@ function gasLike(obstacleProximity, obstacleDirection)
          goalAngle=setCoupure(goalAngle)
          getToGoal(goalAngle, EXPL_CONV)
       end
+   else
+      robot.wheels.set_velocity(BASE_SPEED, BASE_SPEED)
    end
 end
 
@@ -239,17 +257,22 @@ end
 
 
 function chooseNewSource(rsc)
-   local pickSource=robot.random.uniform_int(1,#ressources+1)
-   local x=ressources[pickSource][1]
-   local y=ressources[pickSource][2]
-   return x, y
+   local sourceChosen=false
+   local pickSource
+   while not sourceChosen do
+      pickSource=robot.random.uniform_int(1,#rsc+1)
+      sourceChosen=robot.random.uniform()<rsc[pickSource].score
+   end
+   local x=rsc[pickSource][1]
+   local y=rsc[pickSource][2]
+   return pickSource,x, y
 end
 
 function checkGoalReached()
    local foundSource, onSource, backHome=false,false,false
    if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)>=90 then
       if sourceIsOriginal(posX,posY, ressources) then
-         ressources[#ressources+1]={posX,posY}
+         ressources[#ressources+1]={posX,posY,score=.5}
          foundSource=true
       end
       onSource=true
@@ -270,9 +293,8 @@ function updateBattCoeff(battery, batterySecurity)
    if battery>10 then
       batterySecurity=batterySecurity-(battery-10)*.1
    else
-      batterySecurity=batterySecurity-(battery-10)*.15
+      batterySecurity=batterySecurity-(battery-10)*.07
    end
-   log("bSec ",batterySecurity)
    return batterySecurity
 end
 
@@ -376,7 +398,7 @@ function reset()
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
       wasHit=false
    else
-      goalX,goalY=chooseNewSource(ressources)
+      sourceId, goalX,goalY=chooseNewSource(ressources)
    end
    batterySecurity=INIT_BATT_SEC
 end
