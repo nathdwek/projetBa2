@@ -3,7 +3,6 @@ BASE_SPEED=30
 PI=math.pi
 abs=math.abs
 
-
 CONVERGENCE=1
 BATT_BY_STEP = .2
 SCANNER_RPM=75
@@ -20,7 +19,7 @@ EMER_PROX_DEP=1
 MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
 RANDOM_SPEED_TIME = 30 --The number of steps during which the footbot keeps this new random speed
 
---TODO:DAT REFACTOR...
+
 
 
 --This function is executed every time you press the 'execute' button
