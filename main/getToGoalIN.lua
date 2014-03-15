@@ -1,9 +1,9 @@
 -- Put your global variables here
 BASE_SPEED=30
-MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
-RANDOM_SPEED_TIME = 30 --The number of steps during which the footbot keeps this new random speed
 PI=math.pi
 abs=math.abs
+
+
 CONVERGENCE=1
 BATT_BY_STEP = .2
 SCANNER_RPM=75
@@ -17,6 +17,8 @@ ORGN_SRC_DST=80
 INIT_BATT_SEC=25
 EMER_DIR_DEP=1
 EMER_PROX_DEP=1
+MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
+RANDOM_SPEED_TIME = 30 --The number of steps during which the footbot keeps this new random speed
 
 --TODO:DAT REFACTOR...
 
@@ -63,7 +65,7 @@ function step()
    elseif explore then
       doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource)
    else
-      doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource)
+      doMine(obstacleProximity, obstacleDirection, onSource, backHome)
    end
 end
 
@@ -119,7 +121,7 @@ function emergencyAvoidance(emerProx,emerDir)
    robot.wheels.set_velocity(vLeft, vRight)
 end
 
-function doMine(obstacleProximity, obstacleDirection, onSource, backHome, foundSource)
+function doMine(obstacleProximity, obstacleDirection, onSource, backHome)
    if onSource then
       if goalX~=0 and goalY~=0 then
          evalSource(sourceId, battery)
@@ -146,7 +148,6 @@ function evalSource(sourceId, battery)
    else
       ressources[sourceId].score=ressources[sourceId].score-ressources[sourceId].score*(100-battery)/100
    end
-   log(ressources[sourceId].score)
 end
 
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
@@ -270,13 +271,14 @@ end
 
 function checkGoalReached()
    local foundSource, onSource, backHome=false,false,false
-   if floorIsBlack() and math.sqrt((posX)^2+(posY)^2)>=90 then
-      if sourceIsOriginal(posX,posY, ressources) then
+   insideBlack, seeBlack = floorIsBlack()
+   if seeBlack and math.sqrt((posX)^2+(posY)^2)>=90 then
+      if insideBlack and sourceIsOriginal(posX,posY, ressources) then
          ressources[#ressources+1]={posX,posY,score=.5}
          foundSource=true
       end
       onSource=true
-   elseif floorIsBlack() and math.sqrt((posX)^2+(posY)^2)<=70 then
+   elseif seeBlack and math.sqrt((posX)^2+(posY)^2)<=70 then
       if goalX==0 and goalY==0 then
          backHome=true
       end
@@ -299,12 +301,15 @@ function updateBattCoeff(battery, batterySecurity)
 end
 
 function floorIsBlack()
-   for i=1,12 do
-      if robot.base_ground[i].value==1 then
-         return false
-      end
-   return true
+   local insideBlack = true
+   local seeBlack = false
+   local clr,i
+   for i=1,8 do
+      clr = robot.base_ground[i].value
+      seeBlack = seeBlack or clr== 0
+      insideBlack = insideBlack and clr == 0
    end
+   return insideBlack, seeBlack
 end
 
 function move(obstaclesTable, obstacleProximity, obstacleDirection, goalX,goalY)
