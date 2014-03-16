@@ -149,13 +149,15 @@ function evalSource(sourceId, battery)
    end
 end
 
-function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource, enoughBatt)
+function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource)
    if foundSource then
       explore=false
       goalX,goalY=0,0
    end
    if gotSource then
-      explore,goalX,goalY=robot.random.uniform()>MINE_PROB_WHEN_SRC_RECVD,0,0
+      if robot.random.uniform()<MINE_PROB_WHEN_SRC_RECVD then
+         explore,goalX,goalY=false,0,0
+      end
    end
    if not backForBattery then
       gasLike(obstacleProximity, obstacleDirection)
