@@ -4,7 +4,7 @@ PI=math.pi
 abs=math.abs
 
 CONVERGENCE=1
-BATT_BY_STEP = .2
+BATT_BY_STEP =.1
 SCANNER_RPM=75
 DIR_NUMBER = 15
 EXPL_DIR_NUMBER = 20
@@ -13,7 +13,10 @@ OBSTACLE_PROXIMITY_DEPENDANCE=.25
 OBSTACLE_DIRECTION_DEPENDANCE=.25
 MINE_PROB_WHEN_SRC_RECVD=.2
 ORGN_SRC_DST=80
-INIT_BATT_SEC=25
+INIT_BATT_SEC=20
+IDEAL_NEST_BATT=20
+GOOD_MINE_BATT=75
+BAD_MINE_BATT=50
 EMER_DIR_DEP=1
 EMER_PROX_DEP=1
 MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
@@ -76,14 +79,16 @@ function doCommon()
    shortObstaclesTable = updateObstaclesTable("short_range",shortObstaclesTable)
    obstacleProximity, obstacleDirection=closestObstacleDirection(shortObstaclesTable)
    battery=battery-BATT_BY_STEP
-   backForBattery = backForBattery or battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED<10
+   backForBattery = backForBattery or battery-batterySecurity*BATT_BY_STEP*math.sqrt(posX^2+posY^2)/BASE_SPEED<IDEAL_NEST_BATT
    emerProx, emerDir=readProxSensor()
    if #ressources>=1 then
       broadcastSource(chooseSourceToBroadcast())
    end
-   if battery==0 then
-      BASE_SPEED=0
-      logerr("batt empty")
+   if battery<0 then
+      if BASE_SPEED~=0 then
+         BASE_SPEED=0
+         logerr(robot.id, " batt empty")
+      end
    end
    if currentStep%5000==0 then
       log(travels)
@@ -122,31 +127,36 @@ end
 
 function doMine(obstacleProximity, obstacleDirection, onSource, backHome)
    if onSource then
-      if goalX~=0 and goalY~=0 then
+      if not hasMined then
          evalSource(sourceId, battery)
+         goalX,goalY=0,0
       end
-      goalX=0
-      goalY=0
+      hasMined=true
    elseif backHome then
       sourceId,goalX,goalY=chooseNewSource(ressources)
-      travels=travels+1
+      if hasMined then
+         travels=travels+1
+         hasMined=false
+      end
       log(robot.id, ": travels done so far: ", travels)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
+   elseif backForBattery then
+      if goalX~=0 and goalY~=0 then
+         goalX,goalY=0,0
+         evalSource(sourceId, 30)
+      end
    end
-   if backForBattery then
-      move(obstaclesTable, obstacleProximity, obstacleDirection,0,0)
-   else
-      obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
-      move(obstaclesTable, obstacleProximity, obstacleDirection,goalX,goalY)
-   end
+   obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
+   move(obstaclesTable, obstacleProximity, obstacleDirection,goalX,goalY)
 end
 
 function evalSource(sourceId, battery)
-   if battery>70 then
+   if battery>GOOD_MINE_BATT then
       ressources[sourceId].score=ressources[sourceId].score+(1-ressources[sourceId].score)*battery/100
-   else
+   elseif battery<BAD_MINE_BATT then
       ressources[sourceId].score=ressources[sourceId].score-ressources[sourceId].score*(100-battery)/100
    end
+   log(ressources[sourceId].score)
 end
 
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource)
@@ -293,10 +303,10 @@ function checkGoalReached()
 end
 
 function updateBattCoeff(battery, batterySecurity)
-   if battery>10 then
-      batterySecurity=batterySecurity-(battery-10)*.1
+   if battery>IDEAL_NEST_BATT then
+      batterySecurity=batterySecurity-(battery-IDEAL_NEST_BATT)*.07
    else
-      batterySecurity=batterySecurity-(battery-10)*.07
+      batterySecurity=batterySecurity-(battery-IDEAL_NEST_BATT)*.1
    end
    return batterySecurity
 end

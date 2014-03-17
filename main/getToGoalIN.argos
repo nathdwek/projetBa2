@@ -47,7 +47,7 @@
    <!-- * Arena configuration * -->
    <!-- *********************** -->
    <arena size="12, 12, 1" center="0,0,0.5">
-      <floor id="f" source="image" path="../floorPictures/manySources.png" />
+      <floor id="f" source="image" path="../floorPictures/threeSources.png" />
 
       <box id="bn" size="0.1, 12, 0.2" movable="false">
          <body position="5.05,0,0"  orientation="0,0,0" />
@@ -69,7 +69,7 @@
       <distribute>
          <position method="uniform" min="-5,-5,0" max="5,5,0" />
          <orientation method="uniform" min="0,0,0" max="360,0,0" />
-         <entity quantity="75" max_trials="150">
+         <entity quantity="60" max_trials="150">
             <cylinder id="o" radius="0.1" height="0.2" movable="false" />
          </entity>
       </distribute>
