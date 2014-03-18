@@ -45,7 +45,7 @@ function init()
       shortObstaclesTable[i]=151
    end
    explore=false
-   ressources={{400,350,score=0.5},{420,-420,score=0.5},{-250,0,score=0.5}}
+   ressources={{400,350,score=0.5,travels=0},{420,-420,score=0.5,travels=0},{-250,0,score=0.5,travels=0}}
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
    else
@@ -133,12 +133,13 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome)
       end
       hasMined=true
    elseif backHome then
-      sourceId,goalX,goalY=chooseNewSource(ressources)
       if hasMined then
+         ressources[sourceId].travels=ressources[sourceId].travels +1
          travels=travels+1
+         log(robot.id, ": travels done so far for source ", sourceId, ": ", ressources[sourceId].travels)
          hasMined=false
       end
-      log(robot.id, ": travels done so far: ", travels)
+      sourceId,goalX,goalY=chooseNewSource(ressources)
       log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
    elseif backForBattery then
       if goalX~=0 and goalY~=0 then
