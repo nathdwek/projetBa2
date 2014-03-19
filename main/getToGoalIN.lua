@@ -367,7 +367,6 @@ function move(obstaclesTable, obstacleProximity, obstacleDirection, goalX,goalY)
       speed, lastHit = newRandomSpeed(BASE_SPEED, lastHit)
       closeObstacleAvoidance(obstacleProximity, obstacleDirection)
    end
-   return speed, lastHit
 end
 
 function newRandomSpeed(lastHit)
