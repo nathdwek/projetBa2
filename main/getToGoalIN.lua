@@ -17,6 +17,7 @@ INIT_BATT_SEC=20
 IDEAL_NEST_BATT=20
 GOOD_MINE_BATT=75
 BAD_MINE_BATT=50
+EPSILONGREED=0.1
 EMER_DIR_DEP=1
 EMER_PROX_DEP=1
 MIN_SPEED_COEFF = 0.6 --When a footbot "hits" something, he will pick a temporary speed between this coeff and 1 times BASE_SPEED
@@ -152,18 +153,45 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome)
 end
 
 function evalSource(sourceId, battery)
+   local score=ressources[sourceId].score
    if battery>GOOD_MINE_BATT then
-      ressources[sourceId].score=ressources[sourceId].score+(1-ressources[sourceId].score)*battery/100
+      score=score+(1-score)*battery/100
+      if score>ressources[1].score then
+         ressources[sourceId], ressources[1]=ressources[1], ressources[sourceId]
+      end
    elseif battery<BAD_MINE_BATT then
-      ressources[sourceId].score=ressources[sourceId].score-ressources[sourceId].score*(100-battery)/100
+      score=score-score*(100-battery)/100
+      if sourceId==1 then
+         indexOtherMax=findIndexOtherMax(ressources)
+         if ressources[indexOtherMax].score>score then
+            ressources[indexOtherMax], ressources[1]=ressources[1],ressources[indexOtherMax]
+         end
+      end
    end
    log(ressources[sourceId].score)
+end
+
+function findIndexOtherMax(rsc)
+   if #rsc>1 then
+      local otherMax=rsc[2].score
+      local otherMaxIndex=2
+      if #rsc>2 then
+         for i=3,#rsc do
+            if rsc[i].score>otherMax then
+            otherMax=rsc[i].score
+            otherMaxIndex=i
+            end
+         end
+      end
+   end
+   return otherMaxIndex or 1
 end
 
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource)
    if foundSource then
       explore=false
       goalX,goalY=0,0
+      hasMined=true
    end
    if gotSource then
       if robot.random.uniform()<MINE_PROB_WHEN_SRC_RECVD then
@@ -270,15 +298,20 @@ end
 
 
 function chooseNewSource(rsc)
-   local sourceChosen=false
-   local pickSource
-   while not sourceChosen do
-      pickSource=robot.random.uniform_int(1,#rsc+1)
-      sourceChosen=robot.random.uniform()<rsc[pickSource].score
+   local newSourceId
+   if #rsc>1 then
+      local pickBest=robot.random.uniform()
+      if pickBest<(1-EPSILONGREED) then
+         newSourceId=1
+      else
+         newSourceId=robot.random.uniform_int(2,#rsc+1)
+      end
+   else
+      newSourceId=1
    end
-   local x=rsc[pickSource][1]
-   local y=rsc[pickSource][2]
-   return pickSource,x, y
+   local x=rsc[newSourceId][1]
+   local y=rsc[newSourceId][2]
+   return newSourceId,x, y
 end
 
 function checkGoalReached()
@@ -336,7 +369,6 @@ function move(obstaclesTable, obstacleProximity, obstacleDirection, goalX,goalY)
       speed, lastHit = newRandomSpeed(BASE_SPEED, lastHit)
       closeObstacleAvoidance(obstacleProximity, obstacleDirection)
    end
-   return speed, lastHit
 end
 
 function newRandomSpeed(lastHit)
