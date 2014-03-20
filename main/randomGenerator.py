@@ -18,7 +18,7 @@ from random import uniform
 from math import sqrt, pi, cos, sin
 from sys import argv
 
-def startingPositionsDictGenerator(rMax=50, thetaMax=2*pi, angleMax=2*pi, robotsCount=10, robotName="fb", spacing=22):
+def startingPositionsDictGenerator(rMax=50, thetaMax=2*pi, angleMax=2*pi, robotsCount=10, robotName="fb", spacing=15):
    """Fonction qui génère de manière aléatoire les positions et orientations de départ dans l'arène des robots.
    Arguments:
       rMax, thetaMax, angleMax (float): les paramètres de la distribution des robots.

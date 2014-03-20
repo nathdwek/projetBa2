@@ -6,7 +6,7 @@ abs=math.abs
 CONVERGENCE=1
 BATT_BY_STEP =.1
 SCANNER_RPM=75
-DIR_NUMBER = 15
+DIR_NUMBER = 9
 EXPL_DIR_NUMBER = 20
 EXPL_CONV = 3
 OBSTACLE_PROXIMITY_DEPENDANCE=.25
@@ -15,8 +15,6 @@ MINE_PROB_WHEN_SRC_RECVD=.2
 ORGN_SRC_DST=80
 INIT_BATT_SEC=20
 IDEAL_NEST_BATT=20
-GOOD_MINE_BATT=75
-BAD_MINE_BATT=50
 EPSILONGREED=0.1
 EMER_DIR_DEP=1
 EMER_PROX_DEP=1
@@ -61,6 +59,11 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
+   if currentStep%5000==4999 then
+      for key, val in pairs(ressources) do
+         log(robot.id," :travels for source (", val[1], ",", val[2], ") : ", val.travels)
+      end
+   end
    local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir
    obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir = doCommon()
    if emerProx>0 then
@@ -90,9 +93,6 @@ function doCommon()
          BASE_SPEED=0
          logerr(robot.id, " batt empty")
       end
-   end
-   if currentStep%5000==0 then
-      log(travels)
    end
    return obstacleProximity, obstacleDirection, onSource, foundSource, backHome,gotSource, emerProx, emerDir
 end
@@ -129,22 +129,21 @@ end
 function doMine(obstacleProximity, obstacleDirection, onSource, backHome)
    if onSource then
       if not hasMined then
+         ressources[sourceId].travels=ressources[sourceId].travels +1
+         travels=travels+1
          evalSource(sourceId, battery)
          goalX,goalY=0,0
       end
       hasMined=true
    elseif backHome then
-      sourceId,goalX,goalY=chooseNewSource(ressources)
       if hasMined then
-         travels=travels+1
          hasMined=false
       end
-      log(robot.id, ": travels done so far: ", travels)
-      log(robot.id, ": Next Goal is (", goalX, ", ", goalY, ")")
+      sourceId,goalX,goalY=chooseNewSource(ressources)
    elseif backForBattery then
       if goalX~=0 and goalY~=0 then
          goalX,goalY=0,0
-         evalSource(sourceId, 30)
+         evalSource(sourceId, 0)
       end
    end
    obstaclesTable = updateObstaclesTable("long_range",obstaclesTable)
@@ -152,37 +151,25 @@ function doMine(obstacleProximity, obstacleDirection, onSource, backHome)
 end
 
 function evalSource(sourceId, battery)
-   local score=ressources[sourceId].score
-   if battery>GOOD_MINE_BATT then
-      score=score+(1-score)*battery/100
-      if score>ressources[1].score then
-         ressources[sourceId], ressources[1]=ressources[1], ressources[sourceId]
-      end
-   elseif battery<BAD_MINE_BATT then
-      score=score-score*(100-battery)/100
-      if sourceId==1 then
-         indexOtherMax=findIndexOtherMax(ressources)
-         if ressources[indexOtherMax].score>score then
-            ressources[indexOtherMax], ressources[1]=ressources[1],ressources[indexOtherMax]
-         end
-      end
-   end
+   ressources[sourceId].bSpent=ressources[sourceId].bSpent+(100-battery)
+   ressources[sourceId].score=ressources[sourceId].travels/ressources[sourceId].bSpent
+   log(ressources[sourceId].score)
 end
 
-function findIndexOtherMax(rsc)
+function placeMaxAtOne(rsc)
    if #rsc>1 then
-      local otherMax=rsc[2].score
-      local otherMaxIndex=2
-      if #rsc>2 then
-         for i=3,#rsc do
-            if rsc[i].score>otherMax then
-            otherMax=rsc[i].score
-            otherMaxIndex=i
-            end
+      local maxes={1}
+      local i
+      for i=2,#rsc do
+         if rsc[i].score>rsc[maxes[1]].score then
+            maxes={i}
+         elseif rsc[i].score==rsc[maxes[1]].score then
+            maxes[#maxes+1]=i
          end
       end
+      maxToSwap=maxes[robot.random.uniform_int(1,#maxes+1)]
+      rsc[maxToSwap],rsc[1]=rsc[1],rsc[maxToSwap]
    end
-   return otherMaxIndex or 1
 end
 
 function doExplore(obstacleProximity, obstacleDirection, foundSource, gotSource)
@@ -234,7 +221,9 @@ function listen()
       if robot.range_and_bearing[i].data[1]==1 then
          local source = sourceOut(robot.range_and_bearing[i].data)
          if sourceIsOriginal(source[1],source[2],ressources) then
-            source.score=.5
+            source.score=1
+            source.travels=0
+            source.bSpent=0
             ressources[#ressources+1]=source
             gotSource=true
          end
@@ -298,6 +287,7 @@ end
 function chooseNewSource(rsc)
    local newSourceId
    if #rsc>1 then
+      placeMaxAtOne(rsc)
       local pickBest=robot.random.uniform()
       if pickBest<(1-EPSILONGREED) then
          newSourceId=1
@@ -309,7 +299,7 @@ function chooseNewSource(rsc)
    end
    local x=rsc[newSourceId][1]
    local y=rsc[newSourceId][2]
-   return newSourceId,x, y
+   return newSourceId, x, y
 end
 
 function checkGoalReached()
@@ -317,7 +307,7 @@ function checkGoalReached()
    insideBlack, seeBlack = floorIsBlack()
    if seeBlack and math.sqrt((posX)^2+(posY)^2)>=90 then
       if insideBlack and sourceIsOriginal(posX,posY, ressources) then
-         ressources[#ressources+1]={posX,posY,score=.5}
+         ressources[#ressources+1]={posX,posY,score=1, travels=0,bSpent=0}
          foundSource=true
       end
       onSource=true
