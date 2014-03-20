@@ -90,7 +90,7 @@ function doCommon()
    end
    if battery<0 then
       if BASE_SPEED~=0 then
-         BASE_SPEED=0
+         BASE_SPEED,speed=0,0
          logerr(robot.id, " batt empty")
       end
    end
@@ -153,7 +153,6 @@ end
 function evalSource(sourceId, battery)
    ressources[sourceId].bSpent=ressources[sourceId].bSpent+(100-battery)
    ressources[sourceId].score=ressources[sourceId].travels/ressources[sourceId].bSpent
-   log(ressources[sourceId].score)
 end
 
 function placeMaxAtOne(rsc)
