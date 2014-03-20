@@ -306,7 +306,7 @@ function checkGoalReached()
    insideBlack, seeBlack = floorIsBlack()
    if seeBlack and math.sqrt((posX)^2+(posY)^2)>=90 then
       if insideBlack and sourceIsOriginal(posX,posY, ressources) then
-         ressources[#ressources+1]={posX,posY,score=1, travels=0,bSpent=0}
+         ressources[#ressources+1]={math.floor(posX),math.floor(posY),score=1, travels=0,bSpent=0}
          foundSource=true
       end
       onSource=true
