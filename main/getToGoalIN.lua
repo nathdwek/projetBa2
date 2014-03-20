@@ -51,6 +51,11 @@ function init()
       sourceId,goalX,goalY=chooseNewSource(ressources)
    end
    batterySecurity=INIT_BATT_SEC
+   for i=5,25,5 do
+      f=io.open("results" .. i .. ".dat","w")
+      f:write("\n")
+      io.close(f)
+   end
 end
 
 
@@ -59,10 +64,12 @@ end
 
 --This function is executed at each time step. It must contain the logic of your controller
 function step()
-   if currentStep%5000==4999 then
-      for key, val in pairs(ressources) do
-         log(robot.id," :travels for source (", val[1], ",", val[2], ") : ", val.travels)
-      end
+   for i=5,25,5 do
+   if currentStep==i*1000 then
+      otherRsltsTable=readOtherRsltsTable("results" .. i .. ".dat")
+      updateOtherRsltsTable()
+      writeOtherRsltsTable(otherRsltsTable,"results" .. i .. ".dat")
+   end
    end
    local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir
    obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir = doCommon()
@@ -73,6 +80,32 @@ function step()
    else
       doMine(obstacleProximity, obstacleDirection, onSource, backHome)
    end
+end
+
+function readOtherRsltsTable(filename)
+   local otherRsltsTable={}
+   for line in io.lines(filename) do
+      src,value=string.match(line,"(%-?%d+,%-?%d+):(%d+)")
+      if src then
+         otherRsltsTable[src]=value
+      end
+   end
+   return otherRsltsTable
+end
+
+function updateOtherRsltsTable()
+   for key, val in pairs(ressources) do
+      otherRsltsTable[val[1] .. "," .. val[2]]= (otherRsltsTable[val[1] .. "," .. val[2]] or 0) + val.travels
+   end
+end
+
+function writeOtherRsltsTable(otherRsltsTable,filename)
+   otherResults=io.open(filename, "w")
+   for key,val in pairs(otherRsltsTable) do
+      otherResults:write(key .. ":" .. val)
+      otherResults:write("\n")
+   end
+   io.close(otherResults)
 end
 
 function doCommon()
