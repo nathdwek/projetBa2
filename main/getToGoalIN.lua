@@ -6,7 +6,7 @@ abs=math.abs
 CONVERGENCE=1
 BATT_BY_STEP =.1
 SCANNER_RPM=75
-DIR_NUMBER = 15
+DIR_NUMBER = 9
 EXPL_DIR_NUMBER = 20
 EXPL_CONV = 3
 OBSTACLE_PROXIMITY_DEPENDANCE=.25
@@ -44,7 +44,7 @@ function init()
       shortObstaclesTable[i]=151
    end
    explore=false
-   ressources={{400,350,uid=1,bSpent=0,score=1,travels=0},{420,-420,score=1,uid=2,bSpent=0,travels=0},{-250,0,score=1,uid=3,bSpent=0,travels=0}}
+   ressources={{400,350,bSpent=0,score=1,travels=0},{420,-420,score=1,bSpent=0,travels=0},{-250,0,score=1,bSpent=0,travels=0}}
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
    else
@@ -61,7 +61,7 @@ end
 function step()
    if currentStep%5000==4999 then
       for key, val in pairs(ressources) do
-         log(robot.id," :travels for source ", val.uid, ": ", val.travels)
+         log(robot.id," :travels for source (", val[1], ",", val[2], ") : ", val.travels)
       end
    end
    local obstacleProximity, obstacleDirection, onSource, foundSource, backHome, gotSource, emerProx, emerDir
@@ -221,7 +221,9 @@ function listen()
       if robot.range_and_bearing[i].data[1]==1 then
          local source = sourceOut(robot.range_and_bearing[i].data)
          if sourceIsOriginal(source[1],source[2],ressources) then
-            source.score=.5
+            source.score=1
+            source.travels=0
+            source.bSpent=0
             ressources[#ressources+1]=source
             gotSource=true
          end
@@ -305,7 +307,7 @@ function checkGoalReached()
    insideBlack, seeBlack = floorIsBlack()
    if seeBlack and math.sqrt((posX)^2+(posY)^2)>=90 then
       if insideBlack and sourceIsOriginal(posX,posY, ressources) then
-         ressources[#ressources+1]={posX,posY,score=.5}
+         ressources[#ressources+1]={posX,posY,score=1, travels=0,bSpent=0}
          foundSource=true
       end
       onSource=true
