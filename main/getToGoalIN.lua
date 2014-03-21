@@ -303,7 +303,7 @@ end
 
 function checkGoalReached()
    local foundSource, onSource, backHome=false,false,false
-   insideBlack, seeBlack = floorIsBlack()
+   local insideBlack, seeBlack = floorIsBlack()
    if seeBlack and math.sqrt((posX)^2+(posY)^2)>=90 then
       if insideBlack and sourceIsOriginal(posX,posY, ressources) then
          ressources[#ressources+1]={math.floor(posX),math.floor(posY),score=1, travels=0,bSpent=0}
