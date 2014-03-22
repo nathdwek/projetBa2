@@ -13,7 +13,7 @@ OBSTACLE_PROXIMITY_DEPENDANCE=.25
 OBSTACLE_DIRECTION_DEPENDANCE=.25
 MINE_PROB_WHEN_SRC_RECVD=.2
 ORGN_SRC_DST=80
-INIT_BATT_SEC=20
+INIT_BATT_SEC=30
 IDEAL_NEST_BATT=20
 EPSILONGREED=0.1
 EMER_DIR_DEP=1
@@ -43,8 +43,8 @@ function init()
    for i=-PI+PI/EXPL_DIR_NUMBER, PI-PI/EXPL_DIR_NUMBER, 2*PI/EXPL_DIR_NUMBER do
       shortObstaclesTable[i]=151
    end
-   explore=false
-   ressources={{400,350,bSpent=0,score=1,travels=0},{420,-420,score=1,bSpent=0,travels=0},{-250,0,score=1,bSpent=0,travels=0}}
+   explore=true
+   ressources={}
    if explore then
       robot.wheels.set_velocity(BASE_SPEED,BASE_SPEED)
    else
